@@ -415,6 +415,12 @@ export interface CompactionEvent {
 	cacheRateAfter: number | null;
 	/** Number of turns until cache rate recovers above 80% */
 	recoveryTurns: number | null;
+	/** Milliseconds from session start to this compaction */
+	elapsedMs: number | null;
+	/** Cost of the first API call after compaction (null if no post-compaction call) */
+	firstPostCompactionCost: number | null;
+	/** Average cost of API calls in the segment before this compaction */
+	avgPreCompactionCost: number | null;
 }
 
 /** Categories for context window decomposition */

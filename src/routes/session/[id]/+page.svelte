@@ -3,14 +3,16 @@
 	import { computeContextDecomposition } from '$lib/analysis/context-decomposer.js';
 	import { computeToolAnalysis } from '$lib/analysis/tool-analyzer.js';
 	import { computeSubagentSummaries } from '$lib/analysis/subagent-analyzer.js';
+	import { computeCompactionAnalysis } from '$lib/analysis/compaction-analyzer.js';
 	import TokenEconomicsView from '$lib/components/views/TokenEconomicsView.svelte';
 	import ContextWindowView from '$lib/components/views/ContextWindowView.svelte';
 	import ToolEffectivenessView from '$lib/components/views/ToolEffectivenessView.svelte';
+	import CompactionView from '$lib/components/views/CompactionView.svelte';
 
 	let { data } = $props();
 	const detail = $derived(data.detail);
 
-	let activeTab = $state<'token-economics' | 'context-window' | 'tool-effectiveness' | 'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents'>('token-economics');
+	let activeTab = $state<'token-economics' | 'context-window' | 'tool-effectiveness' | 'compaction' | 'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents'>('token-economics');
 
 	// Compute token economics from all API call groups (main + subagents)
 	const allGroups = $derived([
@@ -23,11 +25,16 @@
 	const toolAnalysis = $derived(computeToolAnalysis(detail.events, allGroups));
 	// Subagent summaries
 	const subagentSummaries = $derived(computeSubagentSummaries(detail.subagents, detail.events));
+	// Compaction analysis
+	const compactionAnalysis = $derived(
+		computeCompactionAnalysis(detail.transcriptRecords, detail.apiCallGroups, detail.events),
+	);
 
 	const tabs = $derived([
 		{ id: 'token-economics' as const, label: 'Token Economics', count: detail.apiCallGroups.length },
 		{ id: 'context-window' as const, label: 'Context Window', count: detail.apiCallGroups.length },
 		{ id: 'tool-effectiveness' as const, label: 'Tool Effectiveness', count: toolAnalysis.totalCalls },
+		{ id: 'compaction' as const, label: 'Compaction', count: compactionAnalysis.compactions.length },
 		{ id: 'events' as const, label: 'Events', count: detail.events.length },
 		{ id: 'transcript' as const, label: 'Transcript', count: detail.transcriptRecords.length },
 		{ id: 'api-calls' as const, label: 'API Calls', count: detail.apiCallGroups.length },
@@ -107,6 +114,8 @@
 		/>
 	{:else if activeTab === 'tool-effectiveness'}
 		<ToolEffectivenessView analysis={toolAnalysis} {subagentSummaries} />
+	{:else if activeTab === 'compaction'}
+		<CompactionView analysis={compactionAnalysis} />
 	{:else}
 		<pre class="max-h-[calc(100vh-14rem)] overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs font-mono leading-relaxed">{JSON.stringify(getTabData(), null, 2)}</pre>
 	{/if}

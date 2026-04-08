@@ -1,23 +1,15 @@
 <script lang="ts">
 	import { computeTokenEconomics, computeLatencyPoints } from '$lib/analysis/token-tracker.js';
 	import { computeContextDecomposition } from '$lib/analysis/context-decomposer.js';
+	import { computeToolAnalysis } from '$lib/analysis/tool-analyzer.js';
 	import TokenEconomicsView from '$lib/components/views/TokenEconomicsView.svelte';
 	import ContextWindowView from '$lib/components/views/ContextWindowView.svelte';
+	import ToolEffectivenessView from '$lib/components/views/ToolEffectivenessView.svelte';
 
 	let { data } = $props();
 	const detail = $derived(data.detail);
 
-	let activeTab = $state<'token-economics' | 'context-window' | 'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents'>('token-economics');
-
-	const tabs = $derived([
-		{ id: 'token-economics' as const, label: 'Token Economics', count: detail.apiCallGroups.length },
-		{ id: 'context-window' as const, label: 'Context Window', count: detail.apiCallGroups.length },
-		{ id: 'events' as const, label: 'Events', count: detail.events.length },
-		{ id: 'transcript' as const, label: 'Transcript', count: detail.transcriptRecords.length },
-		{ id: 'api-calls' as const, label: 'API Calls', count: detail.apiCallGroups.length },
-		{ id: 'tools' as const, label: 'Tool Results', count: detail.toolResults.length },
-		{ id: 'subagents' as const, label: 'Subagents', count: detail.subagents.length },
-	]);
+	let activeTab = $state<'token-economics' | 'context-window' | 'tool-effectiveness' | 'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents'>('token-economics');
 
 	// Compute token economics from all API call groups (main + subagents)
 	const allGroups = $derived([
@@ -26,6 +18,19 @@
 	]);
 	const turns = $derived(detail.events.filter((e) => e.event === 'UserPromptSubmit').length);
 	const economics = $derived(computeTokenEconomics(allGroups, turns));
+	// Tool analysis from event log
+	const toolAnalysis = $derived(computeToolAnalysis(detail.events, allGroups));
+
+	const tabs = $derived([
+		{ id: 'token-economics' as const, label: 'Token Economics', count: detail.apiCallGroups.length },
+		{ id: 'context-window' as const, label: 'Context Window', count: detail.apiCallGroups.length },
+		{ id: 'tool-effectiveness' as const, label: 'Tool Effectiveness', count: toolAnalysis.totalCalls },
+		{ id: 'events' as const, label: 'Events', count: detail.events.length },
+		{ id: 'transcript' as const, label: 'Transcript', count: detail.transcriptRecords.length },
+		{ id: 'api-calls' as const, label: 'API Calls', count: detail.apiCallGroups.length },
+		{ id: 'tools' as const, label: 'Tool Results', count: detail.toolResults.length },
+		{ id: 'subagents' as const, label: 'Subagents', count: detail.subagents.length },
+	]);
 	// Context decomposition (main session only — subagent content appears as Agent tool results)
 	const contextDecomp = $derived(
 		computeContextDecomposition(detail.transcriptRecords, detail.apiCallGroups),
@@ -97,6 +102,8 @@
 			timeline={contextDecomp.timeline}
 			compactions={contextDecomp.compactions}
 		/>
+	{:else if activeTab === 'tool-effectiveness'}
+		<ToolEffectivenessView analysis={toolAnalysis} />
 	{:else}
 		<pre class="max-h-[calc(100vh-14rem)] overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs font-mono leading-relaxed">{JSON.stringify(getTabData(), null, 2)}</pre>
 	{/if}

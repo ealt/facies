@@ -441,6 +441,8 @@ export interface ContextTimelineEntry {
 	description: string;
 	estimatedTokens: number;
 	cumulativeTokens: number;
+	/** Which API call this content is part of the input to. */
+	apiCallIndex?: number;
 }
 
 // =============================================================================

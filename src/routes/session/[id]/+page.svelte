@@ -1,14 +1,17 @@
 <script lang="ts">
 	import { computeTokenEconomics, computeLatencyPoints } from '$lib/analysis/token-tracker.js';
+	import { computeContextDecomposition } from '$lib/analysis/context-decomposer.js';
 	import TokenEconomicsView from '$lib/components/views/TokenEconomicsView.svelte';
+	import ContextWindowView from '$lib/components/views/ContextWindowView.svelte';
 
 	let { data } = $props();
 	const detail = $derived(data.detail);
 
-	let activeTab = $state<'token-economics' | 'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents'>('token-economics');
+	let activeTab = $state<'token-economics' | 'context-window' | 'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents'>('token-economics');
 
 	const tabs = $derived([
 		{ id: 'token-economics' as const, label: 'Token Economics', count: detail.apiCallGroups.length },
+		{ id: 'context-window' as const, label: 'Context Window', count: detail.apiCallGroups.length },
 		{ id: 'events' as const, label: 'Events', count: detail.events.length },
 		{ id: 'transcript' as const, label: 'Transcript', count: detail.transcriptRecords.length },
 		{ id: 'api-calls' as const, label: 'API Calls', count: detail.apiCallGroups.length },
@@ -23,6 +26,10 @@
 	]);
 	const turns = $derived(detail.events.filter((e) => e.event === 'UserPromptSubmit').length);
 	const economics = $derived(computeTokenEconomics(allGroups, turns));
+	// Context decomposition (main session only — subagent content appears as Agent tool results)
+	const contextDecomp = $derived(
+		computeContextDecomposition(detail.transcriptRecords, detail.apiCallGroups),
+	);
 	// Latency: compute per transcript scope (main + each subagent) and merge
 	const latencyPoints = $derived.by(() => {
 		const main = computeLatencyPoints(detail.transcriptRecords, detail.apiCallGroups);
@@ -84,6 +91,12 @@
 
 	{#if activeTab === 'token-economics'}
 		<TokenEconomicsView {economics} {latencyPoints} />
+	{:else if activeTab === 'context-window'}
+		<ContextWindowView
+			snapshots={contextDecomp.snapshots}
+			timeline={contextDecomp.timeline}
+			compactions={contextDecomp.compactions}
+		/>
 	{:else}
 		<pre class="max-h-[calc(100vh-14rem)] overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs font-mono leading-relaxed">{JSON.stringify(getTabData(), null, 2)}</pre>
 	{/if}

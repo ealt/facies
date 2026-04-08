@@ -1,16 +1,28 @@
 <script lang="ts">
+	import { computeTokenEconomics } from '$lib/analysis/token-tracker.js';
+	import TokenEconomicsView from '$lib/components/views/TokenEconomicsView.svelte';
+
 	let { data } = $props();
 	const detail = $derived(data.detail);
 
-	let activeTab = $state<'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents'>('transcript');
+	let activeTab = $state<'token-economics' | 'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents'>('token-economics');
 
 	const tabs = $derived([
+		{ id: 'token-economics' as const, label: 'Token Economics', count: detail.apiCallGroups.length },
 		{ id: 'events' as const, label: 'Events', count: detail.events.length },
 		{ id: 'transcript' as const, label: 'Transcript', count: detail.transcriptRecords.length },
 		{ id: 'api-calls' as const, label: 'API Calls', count: detail.apiCallGroups.length },
 		{ id: 'tools' as const, label: 'Tool Results', count: detail.toolResults.length },
 		{ id: 'subagents' as const, label: 'Subagents', count: detail.subagents.length },
 	]);
+
+	// Compute token economics from all API call groups (main + subagents)
+	const allGroups = $derived([
+		...detail.apiCallGroups,
+		...detail.subagents.flatMap((s) => s.apiCallGroups),
+	]);
+	const turns = $derived(detail.events.filter((e) => e.event === 'UserPromptSubmit').length);
+	const economics = $derived(computeTokenEconomics(allGroups, turns));
 
 	function getTabData() {
 		switch (activeTab) {
@@ -19,6 +31,7 @@
 			case 'api-calls': return detail.apiCallGroups;
 			case 'tools': return detail.toolResults;
 			case 'subagents': return detail.subagents;
+			default: return null;
 		}
 	}
 </script>
@@ -42,11 +55,11 @@
 		</div>
 	{/if}
 
-	<div class="mb-4 flex gap-1 border-b border-border">
+	<div class="mb-4 flex gap-1 overflow-x-auto border-b border-border">
 		{#each tabs as tab}
 			<button
 				onclick={() => activeTab = tab.id}
-				class="px-3 py-2 text-sm transition-colors
+				class="whitespace-nowrap px-3 py-2 text-sm transition-colors
 					{activeTab === tab.id
 						? 'border-b-2 border-primary font-medium text-foreground'
 						: 'text-muted-foreground hover:text-foreground'}"
@@ -57,5 +70,9 @@
 		{/each}
 	</div>
 
-	<pre class="max-h-[calc(100vh-14rem)] overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs font-mono leading-relaxed">{JSON.stringify(getTabData(), null, 2)}</pre>
+	{#if activeTab === 'token-economics'}
+		<TokenEconomicsView {economics} />
+	{:else}
+		<pre class="max-h-[calc(100vh-14rem)] overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs font-mono leading-relaxed">{JSON.stringify(getTabData(), null, 2)}</pre>
+	{/if}
 </div>

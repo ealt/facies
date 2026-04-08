@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { computeTokenEconomics } from '$lib/analysis/token-tracker.js';
+	import { computeTokenEconomics, computeLatencyPoints } from '$lib/analysis/token-tracker.js';
 	import TokenEconomicsView from '$lib/components/views/TokenEconomicsView.svelte';
 
 	let { data } = $props();
@@ -23,6 +23,18 @@
 	]);
 	const turns = $derived(detail.events.filter((e) => e.event === 'UserPromptSubmit').length);
 	const economics = $derived(computeTokenEconomics(allGroups, turns));
+	// Latency: compute per transcript scope (main + each subagent) and merge
+	const latencyPoints = $derived.by(() => {
+		const main = computeLatencyPoints(detail.transcriptRecords, detail.apiCallGroups);
+		const sub = detail.subagents.flatMap((s) =>
+			computeLatencyPoints(s.records, s.apiCallGroups),
+		);
+		const merged = [...main, ...sub]
+			.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+		// Re-index after merge
+		merged.forEach((p, i) => p.index = i);
+		return merged;
+	});
 
 	function getTabData() {
 		switch (activeTab) {
@@ -71,7 +83,7 @@
 	</div>
 
 	{#if activeTab === 'token-economics'}
-		<TokenEconomicsView {economics} />
+		<TokenEconomicsView {economics} {latencyPoints} />
 	{:else}
 		<pre class="max-h-[calc(100vh-14rem)] overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs font-mono leading-relaxed">{JSON.stringify(getTabData(), null, 2)}</pre>
 	{/if}

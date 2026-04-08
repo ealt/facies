@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { computeTokenEconomics } from '$lib/analysis/token-tracker.js';
-import type { ApiCallGroup, Usage } from '$lib/types.js';
+import { computeTokenEconomics, computeLatencyPoints } from '$lib/analysis/token-tracker.js';
+import type { ApiCallGroup, Usage, TranscriptRecord, SystemRecord } from '$lib/types.js';
 
 function makeGroup(model: string, usage: Usage, timestamp = '2026-04-03T17:44:34Z'): ApiCallGroup {
 	return {
@@ -212,5 +212,169 @@ describe('computeTokenEconomics', () => {
 		expect(result.snapshots[0].cumulativeInputTokens).toBe(100);
 		expect(result.snapshots[1].cumulativeInputTokens).toBe(300);
 		expect(result.snapshots[2].cumulativeInputTokens).toBe(600);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// computeLatencyPoints
+// ---------------------------------------------------------------------------
+
+function makeTurnDuration(timestamp: string, durationMs: number): SystemRecord {
+	return {
+		type: 'system',
+		subtype: 'turn_duration',
+		timestamp,
+		durationMs,
+		messageCount: 1,
+		uuid: `uuid-td-${timestamp}`,
+		parentUuid: null,
+		isSidechain: false,
+	} as SystemRecord;
+}
+
+describe('computeLatencyPoints', () => {
+	it('emits one point per API call for single-call turns', () => {
+		const records: TranscriptRecord[] = [
+			makeTurnDuration('2026-04-03T17:44:10Z', 5000),
+		];
+		const groups = [
+			makeGroup('claude-opus-4-6', { input_tokens: 1000, output_tokens: 500 }, '2026-04-03T17:44:05Z'),
+		];
+
+		const result = computeLatencyPoints(records, groups);
+		expect(result).toHaveLength(1);
+		expect(result[0].latencyMs).toBe(5000);
+		expect(result[0].inputTokens).toBe(1000);
+		expect(result[0].outputTokens).toBe(500);
+		expect(result[0].isEstimated).toBe(false);
+	});
+
+	it('distributes turn duration across multi-call turns', () => {
+		const records: TranscriptRecord[] = [
+			makeTurnDuration('2026-04-03T17:44:10Z', 5000),
+			makeTurnDuration('2026-04-03T17:45:10Z', 9000),
+		];
+		const groups = [
+			makeGroup('claude-opus-4-6', { input_tokens: 1000, output_tokens: 500 }, '2026-04-03T17:44:05Z'),
+			makeGroup('claude-opus-4-6', { input_tokens: 2000, output_tokens: 1000 }, '2026-04-03T17:44:50Z'),
+			makeGroup('claude-opus-4-6', { input_tokens: 1500, output_tokens: 800 }, '2026-04-03T17:45:05Z'),
+		];
+
+		const result = computeLatencyPoints(records, groups);
+		expect(result).toHaveLength(3);
+
+		// First turn: 1 API call → exact latency
+		expect(result[0].latencyMs).toBe(5000);
+		expect(result[0].inputTokens).toBe(1000);
+		expect(result[0].isEstimated).toBe(false);
+
+		// Second turn: 2 API calls → 9000ms / 2 = 4500ms each, marked estimated
+		expect(result[1].latencyMs).toBe(4500);
+		expect(result[1].inputTokens).toBe(2000);
+		expect(result[1].isEstimated).toBe(true);
+
+		expect(result[2].latencyMs).toBe(4500);
+		expect(result[2].inputTokens).toBe(1500);
+		expect(result[2].isEstimated).toBe(true);
+	});
+
+	it('returns empty array when no turn_duration records', () => {
+		const groups = [
+			makeGroup('claude-opus-4-6', { input_tokens: 1000, output_tokens: 500 }),
+		];
+		expect(computeLatencyPoints([], groups)).toHaveLength(0);
+	});
+
+	it('skips turns with zero duration', () => {
+		const records: TranscriptRecord[] = [
+			makeTurnDuration('2026-04-03T17:44:10Z', 0),
+			makeTurnDuration('2026-04-03T17:45:10Z', 3000),
+		];
+		const groups = [
+			makeGroup('claude-opus-4-6', { input_tokens: 1000, output_tokens: 500 }, '2026-04-03T17:44:05Z'),
+			makeGroup('claude-opus-4-6', { input_tokens: 2000, output_tokens: 1000 }, '2026-04-03T17:45:00Z'),
+		];
+
+		const result = computeLatencyPoints(records, groups);
+		expect(result).toHaveLength(1);
+		expect(result[0].latencyMs).toBe(3000);
+	});
+
+	it('skips synthetic API call groups', () => {
+		const records: TranscriptRecord[] = [
+			makeTurnDuration('2026-04-03T17:44:10Z', 5000),
+		];
+		const groups: ApiCallGroup[] = [
+			makeGroup('claude-opus-4-6', { input_tokens: 1000, output_tokens: 500 }, '2026-04-03T17:44:05Z'),
+			{
+				...makeGroup('<synthetic>', { input_tokens: 0, output_tokens: 0 }, '2026-04-03T17:44:06Z'),
+				isSynthetic: true,
+			},
+		];
+
+		const result = computeLatencyPoints(records, groups);
+		expect(result).toHaveLength(1);
+		expect(result[0].isEstimated).toBe(false); // only 1 non-synthetic call
+	});
+
+	it('includes cache tokens in inputTokens', () => {
+		const records: TranscriptRecord[] = [
+			makeTurnDuration('2026-04-03T17:44:10Z', 5000),
+		];
+		const groups = [
+			makeGroup('claude-opus-4-6', {
+				input_tokens: 100, output_tokens: 200,
+				cache_read_input_tokens: 5000, cache_creation_input_tokens: 500,
+			}, '2026-04-03T17:44:05Z'),
+		];
+
+		const result = computeLatencyPoints(records, groups);
+		expect(result).toHaveLength(1);
+		expect(result[0].inputTokens).toBe(5600); // 100 + 5000 + 500
+		expect(result[0].outputTokens).toBe(200);
+	});
+
+	it('assigns correct model per API call', () => {
+		const records: TranscriptRecord[] = [
+			makeTurnDuration('2026-04-03T17:44:10Z', 6000),
+		];
+		const groups = [
+			makeGroup('claude-haiku-4-5-20251001', { input_tokens: 100, output_tokens: 100 }, '2026-04-03T17:44:02Z'),
+			makeGroup('claude-opus-4-6', { input_tokens: 100, output_tokens: 500 }, '2026-04-03T17:44:05Z'),
+		];
+
+		const result = computeLatencyPoints(records, groups);
+		expect(result).toHaveLength(2);
+		expect(result[0].model).toBe('claude-haiku-4-5-20251001');
+		expect(result[1].model).toBe('claude-opus-4-6');
+	});
+
+	it('skips turns with no matching API calls', () => {
+		const records: TranscriptRecord[] = [
+			makeTurnDuration('2026-04-03T17:44:10Z', 5000),
+			makeTurnDuration('2026-04-03T17:45:10Z', 3000),
+		];
+		const groups = [
+			makeGroup('claude-opus-4-6', { input_tokens: 1000, output_tokens: 500 }, '2026-04-03T17:44:05Z'),
+		];
+
+		const result = computeLatencyPoints(records, groups);
+		expect(result).toHaveLength(1);
+		expect(result[0].latencyMs).toBe(5000);
+	});
+
+	it('handles zero-output API calls', () => {
+		const records: TranscriptRecord[] = [
+			makeTurnDuration('2026-04-03T17:44:10Z', 2000),
+		];
+		const groups = [
+			makeGroup('claude-opus-4-6', { input_tokens: 5000, output_tokens: 0 }, '2026-04-03T17:44:05Z'),
+		];
+
+		const result = computeLatencyPoints(records, groups);
+		expect(result).toHaveLength(1);
+		expect(result[0].model).toBe('claude-opus-4-6');
+		expect(result[0].outputTokens).toBe(0);
+		expect(result[0].inputTokens).toBe(5000);
 	});
 });

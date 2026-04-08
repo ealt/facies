@@ -1,10 +1,12 @@
 <script lang="ts">
-	import type { TokenEconomics } from '$lib/analysis/token-tracker.js';
+	import type { TokenEconomics, LatencyPoint } from '$lib/analysis/token-tracker.js';
 	import TokenWaterfall from '$lib/components/charts/TokenWaterfall.svelte';
 	import CumulativeCost from '$lib/components/charts/CumulativeCost.svelte';
 	import CacheEfficiency from '$lib/components/charts/CacheEfficiency.svelte';
+	import CostBreakdown from '$lib/components/charts/CostBreakdown.svelte';
+	import LatencyScatter from '$lib/components/charts/LatencyScatter.svelte';
 
-	let { economics }: { economics: TokenEconomics } = $props();
+	let { economics, latencyPoints }: { economics: TokenEconomics; latencyPoints: LatencyPoint[] } = $props();
 
 	function formatTokens(n: number): string {
 		if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -22,6 +24,34 @@
 	function formatPercent(n: number): string {
 		return `${(n * 100).toFixed(1)}%`;
 	}
+
+	function formatDuration(ms: number | null): string {
+		if (ms === null) return 'N/A';
+		if (ms >= 60_000) return `${(ms / 60_000).toFixed(1)}m`;
+		if (ms >= 1_000) return `${(ms / 1_000).toFixed(1)}s`;
+		return `${Math.round(ms)}ms`;
+	}
+
+	// Per-model average latency from latency points
+	const avgLatencyByModel = $derived.by(() => {
+		const map = new Map<string, { total: number; count: number }>();
+		for (const p of latencyPoints) {
+			const entry = map.get(p.model) ?? { total: 0, count: 0 };
+			entry.total += p.latencyMs;
+			entry.count++;
+			map.set(p.model, entry);
+		}
+		const result = new Map<string, number>();
+		for (const [model, { total, count }] of map) {
+			result.set(model, total / count);
+		}
+		return result;
+	});
+
+	// Check if any models have unknown pricing (omitted from treemap)
+	const hasUnpricedModels = $derived(
+		economics.perModel.some((m) => m.totalCost === null)
+	);
 
 	const inputBreakdown = $derived(
 		`Fresh: ${formatTokens(economics.totalInputTokens)}, Cache read: ${formatTokens(economics.totalCacheReadTokens)}, Cache create: ${formatTokens(economics.totalCacheCreateTokens)}`
@@ -107,6 +137,28 @@
 			</div>
 		</div>
 
+		<!-- Cost Breakdown + Latency Scatter side by side -->
+		<div class="grid gap-4 lg:grid-cols-2">
+			{#if economics.perModel.length > 0}
+				<div class="rounded-lg border border-border bg-card p-4">
+					<h3 class="mb-3 text-sm font-medium">Cost Breakdown</h3>
+					<CostBreakdown perModel={economics.perModel} />
+					{#if hasUnpricedModels}
+						<p class="mt-2 text-[10px] text-yellow-400">
+							~ Some models have unknown pricing and are not shown in the treemap.
+						</p>
+					{/if}
+				</div>
+			{/if}
+
+			{#if latencyPoints.length > 0}
+				<div class="rounded-lg border border-border bg-card p-4">
+					<h3 class="mb-3 text-sm font-medium">Latency vs Input Tokens</h3>
+					<LatencyScatter points={latencyPoints} />
+				</div>
+			{/if}
+		</div>
+
 		<!-- Per-model comparison table -->
 		{#if economics.perModel.length > 1}
 			<div class="rounded-lg border border-border bg-card p-4">
@@ -120,7 +172,8 @@
 								<th class="pb-2 pr-4 text-right">Input Tokens</th>
 								<th class="pb-2 pr-4 text-right">Output Tokens</th>
 								<th class="pb-2 pr-4 text-right">Cache Rate</th>
-								<th class="pb-2 text-right">Total Cost</th>
+								<th class="pb-2 pr-4 text-right">Total Cost</th>
+								<th class="pb-2 text-right">Avg Latency</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -131,7 +184,8 @@
 									<td class="py-2 pr-4 text-right">{formatTokens(row.inputTokens + row.cacheReadTokens + row.cacheCreateTokens)}</td>
 									<td class="py-2 pr-4 text-right">{formatTokens(row.outputTokens)}</td>
 									<td class="py-2 pr-4 text-right">{formatPercent(row.cacheRate)}</td>
-									<td class="py-2 text-right">{formatCost(row.totalCost)}</td>
+									<td class="py-2 pr-4 text-right">{formatCost(row.totalCost)}</td>
+									<td class="py-2 text-right">{formatDuration(avgLatencyByModel.get(row.model) ?? null)}</td>
 								</tr>
 							{/each}
 						</tbody>

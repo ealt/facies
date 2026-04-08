@@ -1,4 +1,4 @@
-import type { ApiCallGroup } from '$lib/types.js';
+import type { ApiCallGroup, TranscriptRecord, SystemRecord } from '$lib/types.js';
 import { normalizeModel, lookupPricing } from '$lib/pricing.js';
 import { computeApiCallCost } from './cost-calculator.js';
 
@@ -59,6 +59,19 @@ export interface TokenEconomics {
 	avgCostPerTurn: number | null;
 	models: string[];
 	perModel: ModelBreakdown[];
+}
+
+/** A per-API-call latency data point. */
+export interface LatencyPoint {
+	index: number;
+	timestamp: string;
+	/** Estimated latency in ms (from turn_duration for single-call turns, averaged for multi-call turns). */
+	latencyMs: number;
+	inputTokens: number;
+	outputTokens: number;
+	model: string;
+	/** True when the turn had multiple API calls and latency is an average estimate. */
+	isEstimated: boolean;
 }
 
 function cacheRate(input: number, cacheRead: number, cacheCreate: number): number {
@@ -211,4 +224,82 @@ export function computeTokenEconomics(
 		models: [...modelMap.keys()],
 		perModel,
 	};
+}
+
+/**
+ * Compute per-API-call latency data points by correlating turn_duration system
+ * records with API call groups. Each turn_duration marks the end of a turn;
+ * API calls between consecutive turn boundaries belong to that turn.
+ *
+ * For single-call turns the latency is exact. For multi-call turns the turn
+ * duration is divided equally (marked as estimated).
+ *
+ * Only pass API call groups from the **same transcript scope** as the records
+ * (i.e., main-session groups with main-session records). Mixing scopes
+ * (e.g., subagent API calls with main-session turn_duration) corrupts the
+ * correlation.
+ */
+export function computeLatencyPoints(
+	records: TranscriptRecord[],
+	groups: ApiCallGroup[],
+): LatencyPoint[] {
+	// Extract turn_duration records sorted by timestamp
+	const turnDurations = records
+		.filter((r): r is SystemRecord => r.type === 'system' && r.subtype === 'turn_duration')
+		.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+	if (turnDurations.length === 0) return [];
+
+	// Sort API call groups chronologically, skip synthetic
+	const sorted = [...groups]
+		.filter((g) => !g.isSynthetic)
+		.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+	const points: LatencyPoint[] = [];
+	let groupIdx = 0;
+
+	for (let i = 0; i < turnDurations.length; i++) {
+		const td = turnDurations[i];
+		const tdTime = new Date(td.timestamp).getTime();
+		const prevTime = i > 0 ? new Date(turnDurations[i - 1].timestamp).getTime() : 0;
+		const durationMs = td.durationMs ?? 0;
+		if (durationMs <= 0) continue;
+
+		// Collect API calls that belong to this turn:
+		// timestamp > previous turn_duration AND timestamp <= this turn_duration
+		const turnCalls: ApiCallGroup[] = [];
+
+		while (groupIdx < sorted.length) {
+			const gTime = new Date(sorted[groupIdx].timestamp).getTime();
+			if (gTime > tdTime) break;
+			if (gTime > prevTime) {
+				turnCalls.push(sorted[groupIdx]);
+			}
+			groupIdx++;
+		}
+
+		if (turnCalls.length === 0) continue;
+
+		const isEstimated = turnCalls.length > 1;
+		const perCallLatency = durationMs / turnCalls.length;
+
+		for (const g of turnCalls) {
+			const inp = (g.usage.input_tokens ?? 0) +
+				(g.usage.cache_read_input_tokens ?? 0) +
+				(g.usage.cache_creation_input_tokens ?? 0);
+			const out = g.usage.output_tokens ?? 0;
+
+			points.push({
+				index: points.length,
+				timestamp: g.timestamp,
+				latencyMs: isEstimated ? perCallLatency : durationMs,
+				inputTokens: inp,
+				outputTokens: out,
+				model: normalizeModel(g.model),
+				isEstimated,
+			});
+		}
+	}
+
+	return points;
 }

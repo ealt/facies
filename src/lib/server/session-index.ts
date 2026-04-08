@@ -6,20 +6,16 @@ import type {
 	EventLogRecord,
 	ApiCallGroup,
 } from '$lib/types.js';
+import { normalizeModel } from '$lib/pricing.js';
+import { computeSessionCost } from '$lib/analysis/cost-calculator.js';
 import { discoverSessions, type DiscoveredSession } from './discovery.js';
 import { readEventLog } from './event-log-reader.js';
 import { readTranscript } from './transcript-reader.js';
 import { readAllSubagents, type SubagentData } from './subagent-reader.js';
 
-const INDEX_VERSION = 1;
+export { normalizeModel } from '$lib/pricing.js';
 
-/** Strip [1m] context window annotations and ANSI codes from model strings. */
-export function normalizeModel(model: string): string {
-	return model
-		.replace(/\[.*?\]$/g, '')
-		.replace(/\x1b\[[0-9;]*m/g, '')
-		.trim();
-}
+const INDEX_VERSION = 1;
 
 /**
  * Resolve a transcript path that may be absolute on a different machine.
@@ -136,6 +132,9 @@ function computeSessionSummary(
 		totalOutputTokens += g.usage.output_tokens ?? 0;
 	}
 
+	// Cost calculation
+	const costResult = computeSessionCost(allGroups);
+
 	return {
 		sessionId: discovered.sessionId,
 		project: extractProject(discovered.transcriptPath),
@@ -147,8 +146,8 @@ function computeSessionSummary(
 		turns,
 		totalInputTokens,
 		totalOutputTokens,
-		totalCost: null, // Phase 2a
-		costIsLowerBound: false,
+		totalCost: costResult.totalCost,
+		costIsLowerBound: costResult.costIsLowerBound,
 		compactionCount,
 		toolCallCount,
 		subagentCount: subagents.length,

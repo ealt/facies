@@ -1,8 +1,13 @@
 <script lang="ts">
 	import type { ToolAnalysis, ToolSummary } from '$lib/analysis/tool-analyzer.js';
+	import type { SubagentSummary } from '$lib/types.js';
 	import ToolCostDistribution from '$lib/components/charts/ToolCostDistribution.svelte';
+	import ToolTimeline from '$lib/components/charts/ToolTimeline.svelte';
+	import ToolScatter from '$lib/components/charts/ToolScatter.svelte';
+	import SubagentDeepDive from '$lib/components/views/SubagentDeepDive.svelte';
+	import FailureAnalysisPanel from '$lib/components/views/FailureAnalysisPanel.svelte';
 
-	let { analysis }: { analysis: ToolAnalysis } = $props();
+	let { analysis, subagentSummaries = [] }: { analysis: ToolAnalysis; subagentSummaries?: SubagentSummary[] } = $props();
 
 	// Sortable table state
 	type SortKey = 'toolName' | 'callCount' | 'successRate' | 'avgLatencyMs' | 'avgInputSize' | 'avgResponseSize' | 'totalContextTokens' | 'estimatedContextCost' | 'costPerCall';
@@ -204,6 +209,36 @@
 				</table>
 			</div>
 		</div>
+		<!-- Tool timeline (Gantt-style) -->
+		<div class="rounded-lg border border-border bg-card p-4">
+			<h3 class="mb-3 text-sm font-medium">Tool Timeline</h3>
+			<ToolTimeline calls={analysis.calls} />
+		</div>
+
+		<!-- Context cost vs latency scatter -->
+		<div class="rounded-lg border border-border bg-card p-4">
+			<h3 class="mb-3 text-sm font-medium">
+				Context Cost vs Latency
+				<span class="ml-2 text-[10px] text-muted-foreground">dot size = response size</span>
+			</h3>
+			<ToolScatter calls={analysis.calls} />
+		</div>
+
+		<!-- Failure analysis panel -->
+		{#if analysis.totalFailures > 0}
+			<FailureAnalysisPanel calls={analysis.calls} />
+		{/if}
+
+		<!-- Subagent deep dive -->
+		{#if subagentSummaries.length > 0}
+			<div class="rounded-lg border border-border bg-card p-4">
+				<h3 class="mb-3 text-sm font-medium">
+					Subagent Deep Dive
+					<span class="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-mono">{subagentSummaries.length}</span>
+				</h3>
+				<SubagentDeepDive summaries={subagentSummaries} />
+			</div>
+		{/if}
 	{:else}
 		<div class="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">
 			No tool call data available.

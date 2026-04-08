@@ -2,6 +2,7 @@
 	import { computeTokenEconomics, computeLatencyPoints } from '$lib/analysis/token-tracker.js';
 	import { computeContextDecomposition } from '$lib/analysis/context-decomposer.js';
 	import { computeToolAnalysis } from '$lib/analysis/tool-analyzer.js';
+	import { computeSubagentSummaries } from '$lib/analysis/subagent-analyzer.js';
 	import TokenEconomicsView from '$lib/components/views/TokenEconomicsView.svelte';
 	import ContextWindowView from '$lib/components/views/ContextWindowView.svelte';
 	import ToolEffectivenessView from '$lib/components/views/ToolEffectivenessView.svelte';
@@ -20,6 +21,8 @@
 	const economics = $derived(computeTokenEconomics(allGroups, turns));
 	// Tool analysis from event log
 	const toolAnalysis = $derived(computeToolAnalysis(detail.events, allGroups));
+	// Subagent summaries
+	const subagentSummaries = $derived(computeSubagentSummaries(detail.subagents, detail.events));
 
 	const tabs = $derived([
 		{ id: 'token-economics' as const, label: 'Token Economics', count: detail.apiCallGroups.length },
@@ -103,7 +106,7 @@
 			compactions={contextDecomp.compactions}
 		/>
 	{:else if activeTab === 'tool-effectiveness'}
-		<ToolEffectivenessView analysis={toolAnalysis} />
+		<ToolEffectivenessView analysis={toolAnalysis} {subagentSummaries} />
 	{:else}
 		<pre class="max-h-[calc(100vh-14rem)] overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs font-mono leading-relaxed">{JSON.stringify(getTabData(), null, 2)}</pre>
 	{/if}

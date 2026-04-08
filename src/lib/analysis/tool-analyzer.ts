@@ -4,6 +4,7 @@ import type {
 	PostToolUseEvent,
 	PostToolUseFailureEvent,
 	ToolCall,
+	ToolUseBlock,
 	ApiCallGroup,
 } from '$lib/types.js';
 import { normalizeModel, lookupPricing } from '$lib/pricing.js';
@@ -65,6 +66,7 @@ export function pairToolEvents(events: EventLogRecord[]): PairingResult {
 				toolUseId: post.tool_use_id,
 				toolName: post.tool_name,
 				timestamp: pre?.timestamp ?? post.timestamp,
+				endTimestamp: post.timestamp,
 				inputKeys: post.tool_input_keys,
 				inputSize: post.tool_input_size,
 				responseSize: post.tool_response_size,
@@ -85,6 +87,7 @@ export function pairToolEvents(events: EventLogRecord[]): PairingResult {
 				toolUseId: post.tool_use_id,
 				toolName: post.tool_name,
 				timestamp: pre?.timestamp ?? post.timestamp,
+				endTimestamp: post.timestamp,
 				inputKeys: pre?.tool_input_keys ?? [],
 				inputSize: 0,
 				responseSize: 0,
@@ -221,6 +224,72 @@ export function summarizeTools(calls: ToolCall[], cacheReadRate: number | null):
 	return summaries;
 }
 
+// =============================================================================
+// Input preview enrichment
+// =============================================================================
+
+/**
+ * Generate a short preview string from a tool_use input object.
+ * Extracts the most informative field per tool type.
+ */
+function previewFromInput(toolName: string, input: Record<string, unknown>): string {
+	switch (toolName) {
+		case 'Bash':
+			return typeof input.command === 'string' ? input.command : '';
+		case 'Read':
+			return typeof input.file_path === 'string' ? input.file_path : '';
+		case 'Write':
+			return typeof input.file_path === 'string' ? `Write to ${input.file_path}` : '';
+		case 'Edit':
+			return typeof input.file_path === 'string' ? `Edit ${input.file_path}` : '';
+		case 'Grep':
+			return typeof input.pattern === 'string' ? `grep ${input.pattern}` : '';
+		case 'Glob':
+			return typeof input.pattern === 'string' ? `glob ${input.pattern}` : '';
+		case 'Agent':
+			return typeof input.description === 'string' ? input.description : '';
+		default: {
+			// Fall back to first string-valued key
+			for (const val of Object.values(input)) {
+				if (typeof val === 'string' && val.length > 0) return val;
+			}
+			return '';
+		}
+	}
+}
+
+const MAX_PREVIEW_LENGTH = 120;
+
+/**
+ * Enrich ToolCall[] with inputPreview from API call group content blocks.
+ * Matches by tool_use_id to find the corresponding ToolUseBlock.
+ */
+function enrichInputPreviews(calls: ToolCall[], apiCallGroups: ApiCallGroup[]): void {
+	// Build a map from tool_use_id → ToolUseBlock input
+	const inputMap = new Map<string, Record<string, unknown>>();
+	for (const group of apiCallGroups) {
+		for (const block of group.contentBlocks) {
+			if (block.type === 'tool_use') {
+				const toolUse = block as ToolUseBlock;
+				inputMap.set(toolUse.id, toolUse.input);
+			}
+		}
+	}
+
+	for (const call of calls) {
+		const input = inputMap.get(call.toolUseId);
+		if (input) {
+			let preview = previewFromInput(call.toolName, input);
+			if (preview.length > MAX_PREVIEW_LENGTH) {
+				preview = preview.slice(0, MAX_PREVIEW_LENGTH) + '\u2026';
+			}
+			if (preview) {
+				call.inputPreview = preview;
+			}
+		}
+	}
+}
+
 /**
  * Top-level entry point: pair events and compute analysis.
  *
@@ -242,6 +311,9 @@ export function computeToolAnalysis(
 		if (pricing) {
 			cacheReadRate = pricing.cacheRead;
 		}
+
+		// Enrich calls with input previews from transcript
+		enrichInputPreviews(calls, apiCallGroups);
 	}
 
 	const summaries = summarizeTools(calls, cacheReadRate);

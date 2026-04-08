@@ -387,12 +387,16 @@ export interface ToolCall {
 	toolUseId: string;
 	toolName: string;
 	timestamp: string;
+	/** Timestamp of the PostToolUse/PostToolUseFailure event (completion time). */
+	endTimestamp?: string;
 	inputKeys: string[];
 	inputSize: number;
 	responseSize: number;
 	latencyMs: number | null; // null if pairing is ambiguous
 	failed: boolean;
 	error?: string;
+	/** Short preview of the tool input (e.g. Bash command, file path). Populated from transcript tool_use blocks. */
+	inputPreview?: string;
 }
 
 /** Compaction event — from compact_boundary system records */
@@ -460,6 +464,8 @@ export interface SubagentSummary {
 	totalInputTokens: number;
 	totalOutputTokens: number;
 	totalCost: number | null;
+	/** True if any API call used an unknown model — cost is a lower bound */
+	costIsLowerBound: boolean;
 	/** The final output returned to the main session */
 	lastAssistantMessage: string | null;
 	/** How many tokens the subagent's result added to main context */

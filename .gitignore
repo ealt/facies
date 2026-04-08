@@ -1,3 +1,4 @@
+.cache/
 .claude/logs/
 .claude/projects/
 .svelte-kit/

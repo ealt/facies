@@ -86,7 +86,7 @@ src/
     server/
       discovery.ts              # Walk ~/.claude/logs/ and projects/ to find sessions
       event-log-reader.ts       # Parse event log JSONL
-      transcript-reader.ts      # Parse transcript JSONL, group streaming chunks by requestId
+      transcript-reader.ts      # Parse transcript JSONL, group streaming chunks by message.id
       subagent-reader.ts        # Discover + parse subagent transcripts + meta.json
 
     analysis/
@@ -260,15 +260,14 @@ In observed data: 129 user records with `tool_result` blocks, of which 119 also 
 
 ### Streaming Chunk Deduplication
 
-Multiple assistant records per API call share the same `requestId` (thinking, text, tool_use chunks). Group by `requestId`. Token usage is identical across chunks — take from the first.
+Multiple assistant records from the same API response are streamed as separate transcript records (thinking, text, tool_use chunks). These chunks share two keys: `requestId` (scoped to the tool-use loop / turn) and `message.id` (scoped to the individual API call). Within a single tool-use loop, multiple API calls share the same `requestId` but have distinct `message.id` values. Streaming chunks of a single API call share both `requestId` and `message.id`, with identical `usage` values.
 
-**Fallback when `requestId` is missing**: The schema declares `requestId` as optional. In observed data, the only assistant records without `requestId` are `<synthetic>` records (which are already skipped). However, the parser must not crash on missing `requestId`. Fallback strategy:
+**Grouping strategy**: Group by `message.id` (the API message ID). This correctly deduplicates streaming chunks while keeping separate API calls distinct. The `requestId` is preserved on each group for turn-level association (e.g., linking the API calls within a single tool-use loop). Token usage is identical across chunks of the same `message.id` — take from the first.
 
-1. If `requestId` is present: group by it (primary path).
-2. If `requestId` is missing and the record is `<synthetic>` (model = `<synthetic>`, zero tokens): skip entirely.
-3. If `requestId` is missing on a real assistant record: treat it as its own standalone API call group. Use `message.id` (the API message ID, always present on real records) as the group key. Log a warning for diagnostics but do not fail.
+**Handling edge cases**:
 
-This ensures the parser is robust against schema evolution while the primary grouping path handles >99% of real data.
+1. `<synthetic>` records (model = `<synthetic>`, zero tokens): skip entirely — these are framework-generated placeholders, not real API calls.
+2. Real assistant records missing `message.id`: should not occur in practice, but if encountered, fall back to `requestId` as the group key. If both are missing, treat as a standalone group and log a warning.
 
 ### Context Decomposition (heuristic — the core challenge)
 
@@ -394,7 +393,7 @@ Each row is clickable to expand and show full content. Rows are color-coded to m
 - **Avg cost per turn**: "$0.18"
 - **Model(s) used**: "Opus 4.6, Haiku 4.5" with badges
 
-**Chart 1 — Token waterfall** (the core visualization): A bar chart where each bar is one API call (grouped by requestId). Each bar is split into 4 colored segments stacked horizontally:
+**Chart 1 — Token waterfall** (the core visualization): A bar chart where each bar is one API call (grouped by `message.id`). Each bar is split into 4 colored segments stacked horizontally:
 
 - Red: `input_tokens` (uncached — freshly processed, most expensive per token)
 - Green: `cache_read_input_tokens` (cache hits — 90% discount)
@@ -606,7 +605,7 @@ something useful. No phase depends on later phases for a runnable state.
 
 - Implement `lib/server/discovery.ts` — walk data directories, index sessions
 - Implement `lib/server/event-log-reader.ts` — parse event log JSONL
-- Implement `lib/server/transcript-reader.ts` — parse transcripts, group streaming chunks by requestId, build DAG
+- Implement `lib/server/transcript-reader.ts` — parse transcripts, group streaming chunks by `message.id`, extract normalized tool results (DAG construction deferred to Phase 5b)
 - Implement `lib/server/subagent-reader.ts` — discover + parse subagent transcripts + meta.json
 - Unit tests for all parsers against fixture data
 - **Checkpoint**: parsers work against fixtures, tests pass
@@ -725,7 +724,7 @@ A small representative dataset lives in `tests/fixtures/` for development and te
 ### What to include
 
 - **Event log** (`fixtures/logs/{session_id}.jsonl`): A single session log containing all event types — SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, SubagentStart, SubagentStop, Stop. ~50 events, covering the important patterns (sequential tool pairing, subagent lifecycle, failures).
-- **Transcript** (`fixtures/projects/{project-slug}/{session_id}.jsonl`): The corresponding transcript with: user records, assistant records (with thinking, text, and tool_use content blocks), system records (turn_duration, compact_boundary, api_error), multiple requestId groups showing streaming chunk deduplication, at least one `<synthetic>` assistant record to test skipping. Include a `compact_boundary` record with real `compactMetadata.preTokens`.
+- **Transcript** (`fixtures/projects/{project-slug}/{session_id}.jsonl`): The corresponding transcript with: user records, assistant records (with thinking, text, and tool_use content blocks), system records (turn_duration, compact_boundary, api_error), multiple `message.id` groups showing streaming chunk deduplication (with shared `requestId` across tool-use loops), at least one `<synthetic>` assistant record to test skipping. Include a `compact_boundary` record with real `compactMetadata.preTokens`.
 - **Subagent** (`fixtures/projects/{project-slug}/{session_id}/subagents/agent-{id}.jsonl` + `.meta.json`): One subagent transcript with a few turns.
 - **Diagnostics** (`fixtures/logs/_diagnostics.jsonl`): A few version change events.
 
@@ -740,7 +739,7 @@ Extract from the richest real session (`221974d6-d7aa-4622-854e-0cf013c1c732` �
 Test the analysis and parsing layers against fixture data:
 
 - **`event-log-reader.test.ts`**: Parse fixture event log → verify event counts by type, field presence, timestamp ordering
-- **`transcript-reader.test.ts`**: Parse fixture transcript → verify requestId grouping (multiple chunks → single API call), `<synthetic>` filtering, DAG parent-child links, content block extraction. Also: requestId fallback (real assistant record missing requestId falls back to message.id grouping). Also: tool result normalization (structured `toolUseResult` enriches `tool_result` without overriding, string `toolUseResult` ignored, absent `toolUseResult` handled gracefully).
+- **`transcript-reader.test.ts`**: Parse fixture transcript → verify `message.id` grouping (multiple streaming chunks → single API call group, with `requestId` preserved for turn association), `<synthetic>` filtering, content block extraction, title/slug extraction, `messageId` population, fallback grouping warnings. Also: tool result normalization (structured `toolUseResult` enriches `tool_result` without overriding, string `toolUseResult` ignored, absent `toolUseResult` handled gracefully). DAG parent-child link verification deferred to Phase 5b tests.
 - **`subagent-reader.test.ts`**: Parse fixture subagent → verify meta.json loading, transcript linking
 - **`cost-calculator.test.ts`**: Known model → exact cost. Unknown model → prefix match. Unrecognizable model → null cost with warning. `<synthetic>` → skipped.
 - **`token-tracker.test.ts`**: Cumulative totals across API calls, cache rate calculation, per-model breakdown
@@ -765,7 +764,7 @@ Test the analysis and parsing layers against fixture data:
 
 1. **Startup**: `npm run dev` → app loads, sidebar shows discovered sessions
 2. **Session index**: Verify all sessions from `~/.claude/logs/` appear with correct metadata (title from custom-title record, model from SessionStart, duration from first/last event timestamps)
-3. **Token accuracy**: For a known session, compare dashboard's total tokens with manual sum of transcript usage fields (deduplicating by requestId or message.id fallback, excluding `<synthetic>` records)
+3. **Token accuracy**: For a known session, compare dashboard's total tokens with manual sum of transcript usage fields (deduplicating by `message.id`, excluding `<synthetic>` records)
 4. **Cost accuracy**: Cross-check cost calculation against Claude API pricing page for each known model
 5. **Compaction**: Verify compaction events appear at correct positions. `preTokens` is exact (from `compactMetadata.preTokens`). Post-compaction size is labeled as inferred (`~`) and derived from the next API call's total input tokens.
 6. **Tool latency**: Spot-check a few tool calls — confirm latency matches sequential PreToolUse→PostToolUse pairing by tool_name

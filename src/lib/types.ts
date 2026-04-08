@@ -352,9 +352,12 @@ export interface DiagnosticEvent {
 // Normalized / Processed Types — used by analysis + UI layers
 // =============================================================================
 
-/** An API call group: multiple assistant records with the same requestId */
+/** An API call group: streaming chunks deduplicated by message.id */
 export interface ApiCallGroup {
-	requestId: string;
+	/** API message ID — the dedup key (unique per API call). Null when message.id was missing and a fallback key was used. */
+	messageId: string | null;
+	/** Turn-level request ID (shared across API calls in a tool-use loop). Null when requestId was absent on the source record. */
+	requestId: string | null;
 	model: string;
 	timestamp: string;
 	usage: Usage;

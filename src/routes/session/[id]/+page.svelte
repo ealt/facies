@@ -4,15 +4,17 @@
 	import { computeToolAnalysis } from '$lib/analysis/tool-analyzer.js';
 	import { computeSubagentSummaries } from '$lib/analysis/subagent-analyzer.js';
 	import { computeCompactionAnalysis } from '$lib/analysis/compaction-analyzer.js';
+	import { buildConversationTree } from '$lib/analysis/conversation-builder.js';
 	import TokenEconomicsView from '$lib/components/views/TokenEconomicsView.svelte';
 	import ContextWindowView from '$lib/components/views/ContextWindowView.svelte';
 	import ToolEffectivenessView from '$lib/components/views/ToolEffectivenessView.svelte';
 	import CompactionView from '$lib/components/views/CompactionView.svelte';
+	import ConversationView from '$lib/components/views/ConversationView.svelte';
 
 	let { data } = $props();
 	const detail = $derived(data.detail);
 
-	let activeTab = $state<'token-economics' | 'context-window' | 'tool-effectiveness' | 'compaction' | 'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents'>('token-economics');
+	let activeTab = $state<'token-economics' | 'context-window' | 'tool-effectiveness' | 'compaction' | 'conversation' | 'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents'>('token-economics');
 
 	// Compute token economics from all API call groups (main + subagents)
 	const allGroups = $derived([
@@ -29,12 +31,17 @@
 	const compactionAnalysis = $derived(
 		computeCompactionAnalysis(detail.transcriptRecords, detail.apiCallGroups, detail.events),
 	);
+	// Conversation tree
+	const conversationTree = $derived(
+		buildConversationTree(detail.transcriptRecords, detail.apiCallGroups, detail.toolResults, detail.subagents),
+	);
 
 	const tabs = $derived([
 		{ id: 'token-economics' as const, label: 'Token Economics', count: detail.apiCallGroups.length },
 		{ id: 'context-window' as const, label: 'Context Window', count: detail.apiCallGroups.length },
 		{ id: 'tool-effectiveness' as const, label: 'Tool Effectiveness', count: toolAnalysis.totalCalls },
 		{ id: 'compaction' as const, label: 'Compaction', count: compactionAnalysis.compactions.length },
+		{ id: 'conversation' as const, label: 'Conversation', count: conversationTree.nodeCount },
 		{ id: 'events' as const, label: 'Events', count: detail.events.length },
 		{ id: 'transcript' as const, label: 'Transcript', count: detail.transcriptRecords.length },
 		{ id: 'api-calls' as const, label: 'API Calls', count: detail.apiCallGroups.length },
@@ -116,6 +123,8 @@
 		<ToolEffectivenessView analysis={toolAnalysis} {subagentSummaries} />
 	{:else if activeTab === 'compaction'}
 		<CompactionView analysis={compactionAnalysis} />
+	{:else if activeTab === 'conversation'}
+		<ConversationView tree={conversationTree} />
 	{:else}
 		<pre class="max-h-[calc(100vh-14rem)] overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs font-mono leading-relaxed">{JSON.stringify(getTabData(), null, 2)}</pre>
 	{/if}

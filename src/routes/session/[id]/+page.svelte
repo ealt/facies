@@ -14,7 +14,8 @@
 	let { data } = $props();
 	const detail = $derived(data.detail);
 
-	let activeTab = $state<'token-economics' | 'context-window' | 'tool-effectiveness' | 'compaction' | 'conversation' | 'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents'>('token-economics');
+	type TabId = 'token-economics' | 'context-window' | 'tool-effectiveness' | 'compaction' | 'conversation' | 'events' | 'transcript' | 'api-calls' | 'tools' | 'subagents';
+	let activeTab = $state<TabId>('token-economics');
 
 	// Compute token economics from all API call groups (main + subagents)
 	const allGroups = $derived([
@@ -96,36 +97,16 @@
 		</div>
 	{/if}
 
-	<!-- svelte-ignore a11y_interactive_supports_focus -->
-	<div
-		class="mb-4 flex gap-1 overflow-x-auto border-b border-border"
-		role="tablist"
-		onkeydown={(e: KeyboardEvent) => {
-			const idx = tabs.findIndex((t) => t.id === activeTab);
-			if (e.key === 'ArrowRight') {
-				e.preventDefault();
-				activeTab = tabs[(idx + 1) % tabs.length].id;
-			} else if (e.key === 'ArrowLeft') {
-				e.preventDefault();
-				activeTab = tabs[(idx - 1 + tabs.length) % tabs.length].id;
-			}
-		}}
-	>
-		{#each tabs as tab}
-			<button
-				role="tab"
-				aria-selected={activeTab === tab.id}
-				tabindex={activeTab === tab.id ? 0 : -1}
-				onclick={() => activeTab = tab.id}
-				class="whitespace-nowrap px-3 py-2 text-sm transition-colors
-					{activeTab === tab.id
-						? 'border-b-2 border-primary font-medium text-foreground'
-						: 'text-muted-foreground hover:text-foreground'}"
-			>
-				{tab.label}
-				<span class="ml-1 rounded bg-muted px-1.5 py-0.5 text-xs font-mono">{tab.count}</span>
-			</button>
-		{/each}
+	<div class="mb-4">
+		<select
+			value={activeTab}
+			onchange={(e) => { activeTab = (e.currentTarget as HTMLSelectElement).value as TabId; }}
+			class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+		>
+			{#each tabs as tab}
+				<option value={tab.id}>{tab.label} ({tab.count})</option>
+			{/each}
+		</select>
 	</div>
 
 	{#if activeTab === 'token-economics'}

@@ -1,1 +1,8 @@
+.cache/
+.claude/logs/
+.claude/projects/
+.svelte-kit/
+.vscode
+build/
 docs/plans/review
+node_modules/

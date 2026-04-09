@@ -26,7 +26,10 @@ All heuristic values are displayed with a visual indicator (e.g., `~` prefix or 
 - **LayerCake + D3** — charting (LayerCake for standard charts, raw D3 for Sankey/DAG/treemap)
 - **Tailwind CSS 4** — styling
 - **Tiny local API server** (SvelteKit server routes) — serves JSONL files from `~/.claude/`
-- **No external database** — all data read from filesystem at request time
+- **Session index cache** — lightweight JSON file (`.cache/session-index.json`) that caches per-session summary metadata (title, model, duration, total tokens, total cost, compaction count, tool counts). See "Cross-Session Index" section below.
+- **No external database** — individual sessions are parsed from filesystem at request time; only the cross-session index is cached
+
+**Expected corpus scale** (from observed data): ~25 session event logs (2.5 MB), ~650 transcript files including subagents (211 MB). The session index cache avoids reparsing the full corpus on every landing page load. Individual session detail views parse one session's files on demand — the largest observed session transcript is ~5 MB, which parses in <1 second.
 
 ## Data Sources
 
@@ -76,14 +79,14 @@ src/
       +page.svelte              # Session detail — tabbed views
       +page.server.ts           # Load session data from filesystem
     api/
-      sessions/+server.ts       # GET: list all sessions (index from event logs)
+      sessions/+server.ts       # GET: list all sessions (from session index cache)
       sessions/[id]/+server.ts  # GET: full parsed session (events + transcript)
 
   lib/
     server/
       discovery.ts              # Walk ~/.claude/logs/ and projects/ to find sessions
       event-log-reader.ts       # Parse event log JSONL
-      transcript-reader.ts      # Parse transcript JSONL, group streaming chunks by requestId
+      transcript-reader.ts      # Parse transcript JSONL, group streaming chunks by message.id
       subagent-reader.ts        # Discover + parse subagent transcripts + meta.json
 
     analysis/
@@ -120,6 +123,62 @@ src/
       ConversationDAG.svelte    # D3 tree layout: conversation structure
       CacheEfficiency.svelte    # LayerCake line: cache hit rate over time
 ```
+
+## Cross-Session Index
+
+The overview dashboard needs per-session summary metrics (title, model, duration, total tokens, total cost, compaction count) without reparsing every transcript on each page load. The solution is a lightweight cached index.
+
+**File**: `.cache/session-index.json` (gitignored, lives alongside the app)
+
+**Schema**:
+```typescript
+interface SessionIndex {
+  version: number;               // schema version for cache invalidation
+  lastUpdated: string;           // ISO timestamp
+  sessions: SessionSummary[];
+}
+
+interface SessionSummary {
+  sessionId: string;
+  project: string;
+  title: string | null;
+  model: string;
+  startTime: string;
+  endTime: string | null;        // null for interrupted sessions
+  durationMs: number;
+  turns: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCost: number | null;      // null if unknown model
+  costIsLowerBound: boolean;     // true if any API call had unknown model pricing
+  compactionCount: number;
+  toolCallCount: number;
+  subagentCount: number;
+  // Source file metadata for staleness detection
+  eventLogPath: string;
+  eventLogMtime: number;         // file modification time (ms since epoch)
+  transcriptPath: string;
+  transcriptMtime: number;
+  subagentMtimes: Record<string, number>;  // subagent file path → mtime
+}
+```
+
+**Lifecycle**:
+1. On app startup (or when the overview page loads), read the index file.
+2. Walk `~/.claude/logs/` to discover all session event log files.
+3. For each session, compare the mtime of the event log, transcript, and all subagent transcripts against the cached entry. A session is stale if **any** source file has a newer mtime than cached.
+4. For sessions that are new or stale: parse the event log + transcript + subagents, compute the summary, and update the index entry.
+5. Write the updated index back to disk.
+6. Stale entries (event log file no longer exists) are removed.
+
+This is a simple mtime-based cache, not a database. The index file is small (<100 KB for hundreds of sessions) and regenerates in seconds if deleted.
+
+**Upgrade path**: If corpus size or query complexity outgrows the JSON index (e.g., thousands of sessions, or need for cross-session joins), the natural next step is a local SQLite store. The current JSON approach is a deliberate choice for simplicity at the observed scale.
+
+**Degraded behavior when data is incomplete**:
+- **Event log exists but transcript is missing**: Show the session in the index with metadata from the event log only (model, duration, tool counts). Token totals and cost are shown as "unavailable" since they require transcript parsing.
+- **Transcript exists but no event log**: These sessions are not discovered (event logs are the primary discovery mechanism). This is acceptable — sessions without hooks enabled predate the logging system.
+- **Partially written files** (e.g., session in progress or interrupted write): The JSONL parser reads line-by-line and skips malformed lines. Partial last lines are silently dropped. The parser tracks a `skippedLines` count; if nonzero, the UI displays a subtle warning badge: "Partial data — N malformed lines skipped. Session may be in progress or incomplete." This prevents silent undercounting of token totals or missing compaction events.
 
 ## Key Data Processing
 
@@ -165,9 +224,50 @@ How each transcript record type is handled:
 | `<synthetic>` assistant | Ignored (zero-token placeholders) | Not used |
 | Empty thinking blocks | Collapsed — show "No thinking" | Not counted in token breakdown |
 
+### Tool Result Normalization
+
+Tool results appear in two places in the transcript, which must be unified into a single internal representation before analysis or display:
+
+1. **Inside `message.content[]`** on user records: `tool_result` content blocks with `tool_use_id`, `content` (string), and optional `is_error` flag. This is the API-level representation — what was sent back to the model.
+2. **Top-level `toolUseResult`** on the same user record: can be a plain string OR a structured object `{type: "text", file: {filePath, content, numLines, startLine, totalLines}}`. This is a richer representation added by Claude Code's framework.
+
+**Normalization strategy**:
+
+```typescript
+interface NormalizedToolResult {
+  toolUseId: string;
+  content: string;                // the text content sent to the model
+  isError: boolean;
+  // Enrichment from toolUseResult (when available)
+  sourceFile?: {                  // present when toolUseResult is a structured file read
+    filePath: string;
+    numLines: number;
+    startLine: number;
+    totalLines: number;
+  };
+}
+```
+
+For each user record containing `tool_result` content blocks:
+1. Extract `tool_use_id` and `content` from the `tool_result` block (authoritative — this is what the model saw).
+2. If `toolUseResult` is a structured object with `type: "text"` and `file`: attach the file metadata as enrichment.
+3. If `toolUseResult` is a string: it's redundant with `content` — ignore it.
+4. If `toolUseResult` is absent: no enrichment available.
+
+The conversation browser uses `content` for display and `sourceFile` metadata for the detail panel header (e.g., "Read /src/lib/parser.ts — lines 1–1847 of 1847"). The context decomposer uses `content.length` for token estimation.
+
+In observed data: 129 user records with `tool_result` blocks, of which 119 also have structured `toolUseResult` objects and 10 have string `toolUseResult`. The normalization layer handles all variants.
+
 ### Streaming Chunk Deduplication
 
-Multiple assistant records per API call share the same `requestId` (thinking, text, tool_use chunks). Group by requestId. Token usage is identical across chunks — take from the first.
+Multiple assistant records from the same API response are streamed as separate transcript records (thinking, text, tool_use chunks). These chunks share two keys: `requestId` (scoped to the tool-use loop / turn) and `message.id` (scoped to the individual API call). Within a single tool-use loop, multiple API calls share the same `requestId` but have distinct `message.id` values. Streaming chunks of a single API call share both `requestId` and `message.id`, with identical `usage` values.
+
+**Grouping strategy**: Group by `message.id` (the API message ID). This correctly deduplicates streaming chunks while keeping separate API calls distinct. The `requestId` is preserved on each group for turn-level association (e.g., linking the API calls within a single tool-use loop). Token usage is identical across chunks of the same `message.id` — take from the first.
+
+**Handling edge cases**:
+
+1. `<synthetic>` records (model = `<synthetic>`, zero tokens): skip entirely — these are framework-generated placeholders, not real API calls.
+2. Real assistant records missing `message.id`: should not occur in practice, but if encountered, fall back to `requestId` as the group key. If both are missing, treat as a standalone group and log a warning.
 
 ### Context Decomposition (heuristic — the core challenge)
 
@@ -184,7 +284,7 @@ The API reports aggregate token counts per API call, not per-message breakdowns.
    - Assistant text/thinking: `content.length / 4`
    - These are independent estimates — they won't sum exactly to the authoritative total.
 3. **Proportional attribution**: For each API call, compute the estimated token count for each content category present. Scale proportionally so the category estimates sum to the authoritative total. This preserves correct totals while giving a reasonable categorical breakdown.
-4. **Compaction boundaries**: After a `compact_boundary`, the context resets. The first post-compaction API call's total input tokens shows the new baseline. The "tokens freed" calculation (`preTokens - post total`) is exact for preTokens (from `compactMetadata.preTokens`) and uses the next API call's total input as the post estimate — labeled as "~post-compaction size (inferred from next API call)".
+4. **Compaction boundaries**: After a `compact_boundary`, the context resets. The compacted summary becomes its own category — **"Compacted summary"** — in the stacked area chart. It replaces the prior breakdown with a single block representing the summarized context. The first post-compaction API call's total input tokens shows the new baseline. As new content accretes after compaction, the "Compacted summary" block remains at the base (like the system baseline) while new user messages, tool results, etc. stack on top. The "tokens freed" calculation (`preTokens - post total`) is exact for preTokens (from `compactMetadata.preTokens`) and uses the next API call's total input as the post estimate — labeled as "~post-compaction size (inferred from next API call)".
 5. **Confidence signal**: The UI marks all decomposed values with `~` prefix and a tooltip: "Estimated — breakdown is proportionally attributed; totals are exact."
 
 ### Cost Calculation
@@ -204,9 +304,10 @@ const PRICING: Record<string, ModelPricing> = {
 **Model string normalization**:
 
 - `<synthetic>` records: skip entirely (zero-token framework placeholders, not real API calls)
-- Known models: exact match against pricing table
+- **Strip suffixes and annotations** before lookup: real data contains strings like `claude-opus-4-6[1m]` (context window annotation), ANSI escape codes, and trailing whitespace. Normalize by stripping `[...]` suffixes, ANSI codes, and whitespace before matching.
+- Known models: exact match against pricing table (after normalization)
 - Unknown models: attempt prefix match (e.g., `claude-opus-*` → use opus pricing). If no match, display token counts without cost and flag "unknown model — cost unavailable" in the UI. The session's total cost is shown as a lower bound with a warning badge.
-- The pricing table is a single `pricing.ts` file — easy to update when new models ship.
+- The pricing table lives in `pricing-data.json` (checked-in, updated by `scripts/update-pricing.ts`). See "Pricing Update Script" section below.
 
 ### Tool Latency Correlation
 
@@ -241,6 +342,7 @@ const PRICING: Record<string, ModelPricing> = {
 - **Assistant thinking** (light gray): extended thinking blocks — often large, shows how much context goes to reasoning
 - **Tool results** (orange): output returned from tool calls (Read file contents, Bash output, Grep results, web fetch content). This is often the biggest and most variable contributor.
 - **Subagent overhead** (purple): content from subagent calls — the Agent tool input/output, subagent transcript results piped back into the main context
+- **Compacted summary** (amber, post-compaction only): the summarized context block that replaces all prior categories after a compaction event. Sits at the base of the stack (above system baseline) until the next compaction replaces it.
 
 **Compaction events** appear as vertical dashed lines with annotations: "Compacted: 182K → ~26K tokens (freed ~156K)". The pre-compaction value is exact (from `compactMetadata.preTokens`); the post value and freed amount are inferred and marked with `~`. The stacked area visibly drops at these points.
 
@@ -291,7 +393,7 @@ Each row is clickable to expand and show full content. Rows are color-coded to m
 - **Avg cost per turn**: "$0.18"
 - **Model(s) used**: "Opus 4.6, Haiku 4.5" with badges
 
-**Chart 1 — Token waterfall** (the core visualization): A bar chart where each bar is one API call (grouped by requestId). Each bar is split into 4 colored segments stacked horizontally:
+**Chart 1 — Token waterfall** (the core visualization): A bar chart where each bar is one API call (grouped by `message.id`). Each bar is split into 4 colored segments stacked horizontally:
 
 - Red: `input_tokens` (uncached — freshly processed, most expensive per token)
 - Green: `cache_read_input_tokens` (cache hits — 90% discount)
@@ -488,53 +590,173 @@ Additional analyses the data supports beyond the five core views:
 
 ## Implementation Phases
 
-### Phase 1: Foundation
+Each phase ends at a working checkpoint — the app builds, runs, and shows
+something useful. No phase depends on later phases for a runnable state.
 
-- `npx sv create claude-session-analyzer` (SvelteKit skeleton)
-- Add shadcn-svelte, Tailwind CSS 4, LayerCake, D3
-- Implement server-side data discovery and parsing (`lib/server/`)
-- Build API routes (`/api/sessions`, `/api/sessions/[id]`)
-- Build app shell: sidebar with session list, header, tab navigation
-- Define all TypeScript types (`lib/types.ts`)
+### Phase 1a: Scaffold + Types
 
-### Phase 2: Token Economics View
+- Initialize SvelteKit project with Tailwind CSS 4
+- Add shadcn-svelte component library
+- Define all TypeScript interfaces (`lib/types.ts`) — event log types, transcript record types, analysis result types
+- Add fixture data: a small representative sample of JSONL files (event logs + transcripts + subagent data, including compaction and tool failures) in `tests/fixtures/`
+- **Checkpoint**: `npm run dev` → blank app loads, types compile, fixtures parse with `tsc`
 
-- Implement `token-tracker.ts` and `cost-calculator.ts`
-- Build token waterfall chart (LayerCake grouped bar)
-- Build cost breakdown (D3 treemap)
+### Phase 1b: Server-Side Parsing
+
+- Implement `lib/server/discovery.ts` — walk data directories, index sessions
+- Implement `lib/server/event-log-reader.ts` — parse event log JSONL
+- Implement `lib/server/transcript-reader.ts` — parse transcripts, group streaming chunks by `message.id`, extract normalized tool results (DAG construction deferred to Phase 5b)
+- Implement `lib/server/subagent-reader.ts` — discover + parse subagent transcripts + meta.json
+- Unit tests for all parsers against fixture data
+- **Checkpoint**: parsers work against fixtures, tests pass
+
+### Phase 1c: API Routes + App Shell
+
+- Implement session index cache (`lib/server/session-index.ts`) — mtime-based JSON cache for cross-session summaries
+- Build SvelteKit server routes: `GET /api/sessions` (from session index cache), `GET /api/sessions/[id]` (full parsed session on demand)
+- Build app shell: sidebar with session list grouped by project, header with active session info, tab navigation
+- Build `+page.server.ts` loaders for session detail route
+- **Checkpoint**: `npm run dev` → sidebar lists discovered sessions from cached index, clicking one loads session data and displays raw JSON in the content area (placeholder for real views)
+
+### Phase 2a: Pricing + Cost Calculator
+
+- Implement `lib/pricing.ts` — model pricing constants with local cache
+- Implement `scripts/update-pricing.ts` — script to fetch/update pricing from Anthropic's published rates (writes to `src/lib/pricing-data.json`)
+- Implement `lib/analysis/cost-calculator.ts` — cost per API call, model string normalization, unknown model handling
+- Unit tests for cost calculation against known values
+- **Checkpoint**: cost calculator tested, pricing script runnable
+
+### Phase 2b: Token Economics View
+
+- Implement `lib/analysis/token-tracker.ts` — cumulative token accounting per API call
+- Build top metrics bar (total cost, input/output tokens, cache hit rate, cost saved by caching)
+- Build token waterfall chart (LayerCake grouped bar — input/cache_read/cache_create/output per API call)
+- Build cumulative cost over time chart (LayerCake line)
 - Build cache efficiency line chart
-- Wire up top metrics bar
+- Build per-model comparison table
+- **Checkpoint**: navigate to a session → Token Economics tab shows real data with working charts
+
+### Phase 2c: Cost Treemap + Latency
+
+- Build cost breakdown treemap (D3 nested rectangles — model > category)
+- Build latency vs token count scatter (LayerCake scatter)
+- **Checkpoint**: Token Economics view is feature-complete
 
 ### Phase 3: Context Window View
 
-- Implement `context-decomposer.ts` — the hardest analysis piece
-- Build stacked area chart (LayerCake)
-- Add compaction boundary markers
-- Add hover tooltips and click-to-detail
+- Implement `lib/analysis/context-decomposer.ts` — estimate context composition from aggregate token counts, with compacted summary as its own category
+- Build stacked area chart (LayerCake) with color-coded regions
+- Add compaction boundary markers (vertical dashed lines with annotations)
+- Build "Network tab" row table below the chart (chronological content items)
+- Add hover tooltips and click-to-detail interaction
+- Add cumulative/incremental toggle, brush/zoom
+- Unit tests for context decomposer proportional attribution logic
+- **Checkpoint**: navigate to a session → Context Window tab shows stacked area chart with compaction drops and clickable detail panel
 
-### Phase 4: Tool Effectiveness View
+### Phase 4a: Tool Analysis
 
-- Implement `tool-analyzer.ts`
-- Build tool summary table (shadcn-svelte data table)
-- Build tool timeline (D3 Gantt)
-- Build scatter plot (LayerCake)
-- Add subagent deep dive and failure table
+- Implement `lib/analysis/tool-analyzer.ts` — tool success rates, latency (PreToolUse→PostToolUse sequential pairing), context cost
+- Build tool summary table (shadcn-svelte data table, sortable)
+- Build tool cost distribution (horizontal stacked bar)
+- Unit tests for tool latency pairing
+- **Checkpoint**: navigate to a session → Tool Effectiveness tab shows summary table and cost distribution
 
-### Phase 5: Compaction + Conversation
+### Phase 4b: Tool Timeline + Subagents
 
-- Implement `compaction-analyzer.ts`
-- Build compaction timeline and cards
-- Implement DAG builder from uuid/parentUuid
-- Build conversation tree (D3 tree layout)
-- Build detail panel with content rendering
+- Build tool timeline (D3 Gantt-style — tool calls over time with latency bars)
+- Build context cost vs latency scatter (LayerCake)
+- Build subagent deep dive section (cards per subagent with internal metrics)
+- Build failure analysis panel (PostToolUseFailure table)
+- **Checkpoint**: Tool Effectiveness view is feature-complete
+
+### Phase 5a: Compaction Analysis
+
+- Implement `lib/analysis/compaction-analyzer.ts` — pre/post metrics, cache rate recovery tracking
+- Build session compaction timeline (horizontal bar with sparkline height + compaction dividers)
+- Build per-compaction detail cards (before/after tokens, cache rate change, recovery turns)
+- Unit tests for compaction metrics
+- **Checkpoint**: navigate to a session with compaction events → Compaction tab shows timeline and cards
+
+### Phase 5b: Conversation Browser
+
+- Implement DAG builder from uuid/parentUuid in transcript records
+- Build conversation tree view (D3 tree layout — user prompts, API call groups, tool calls, system events)
+- Build detail panel (full content with markdown rendering, syntax highlighting, token badges)
+- Handle subagent nesting (collapsible sub-trees)
+- **Checkpoint**: navigate to a session → Conversation tab shows interactive tree with content panel
 
 ### Phase 6: Overview Dashboard + Polish
 
-- Cross-session aggregation
-- Session table with sorting/filtering
-- Trend charts
-- Dark mode (default — dev tool)
+- Implement cross-session aggregation (total sessions, total tokens, total cost, sessions per project)
+- Build session table (shadcn-svelte data table — sortable, filterable, searchable)
+- Build trend charts (daily token usage, sessions per project, tool usage distribution)
+- Cross-session compaction patterns (trigger threshold histogram, duration vs compaction count scatter)
+- Dark mode (default — dev tool aesthetic)
 - Keyboard navigation
+- Error states and loading states for all views
+- **Checkpoint**: landing page shows overview dashboard with all sessions, drill-down into any session works end-to-end
+
+## Pricing Update Script
+
+The pricing table lives in `src/lib/pricing-data.json` — a checked-in JSON file that the app reads at runtime. A separate script (`scripts/update-pricing.ts`) updates this file:
+
+```
+npx tsx scripts/update-pricing.ts
+```
+
+The script:
+
+1. Fetches current pricing from Anthropic's published pricing page (or API docs)
+2. Parses model names and per-token rates (input, output, cache_read, cache_create)
+3. Merges with existing `pricing-data.json` — adds new models, updates changed prices, preserves manual entries
+4. Writes the updated file with a `lastUpdated` timestamp
+5. Diffs the old vs new and prints a summary of changes
+6. **Fails loudly** if parsing returns zero models or if the page structure has changed beyond recognition — never silently writes partial/empty pricing data
+
+**Design rationale**: The app should never hit external URLs at runtime — it's a local forensic tool analyzing past sessions. Pricing data changes infrequently (new model launches, rare price changes). A manual script run is the right cadence. The JSON file is checked into git so changes are auditable.
+
+**Fallback for unknown models**: The app still uses prefix matching at runtime (e.g., `claude-opus-4-6-20260301` → match `claude-opus-4-6` pricing). The script just keeps the canonical table current.
+
+## Fixture Data
+
+A small representative dataset lives in `tests/fixtures/` for development and testing. The fixtures are extracted from the real session data in `.claude/` and trimmed to be small but representative.
+
+### What to include
+
+- **Event log** (`fixtures/logs/{session_id}.jsonl`): A single session log containing all event types — SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, SubagentStart, SubagentStop, Stop. ~50 events, covering the important patterns (sequential tool pairing, subagent lifecycle, failures).
+- **Transcript** (`fixtures/projects/{project-slug}/{session_id}.jsonl`): The corresponding transcript with: user records, assistant records (with thinking, text, and tool_use content blocks), system records (turn_duration, compact_boundary, api_error), multiple `message.id` groups showing streaming chunk deduplication (with shared `requestId` across tool-use loops), at least one `<synthetic>` assistant record to test skipping. Include a `compact_boundary` record with real `compactMetadata.preTokens`.
+- **Subagent** (`fixtures/projects/{project-slug}/{session_id}/subagents/agent-{id}.jsonl` + `.meta.json`): One subagent transcript with a few turns.
+- **Diagnostics** (`fixtures/logs/_diagnostics.jsonl`): A few version change events.
+
+### Extraction approach
+
+Extract from the richest real session (`221974d6-d7aa-4622-854e-0cf013c1c732` — has 24 subagent events, 21 failures, and a matching transcript with compaction). Trim to ~50 event log lines and ~100 transcript lines. Redact any sensitive content (file paths are fine, but strip any secrets or credentials if present). The goal is a fixture that exercises every code path in the parsers.
+
+## Testing Strategy
+
+### Unit tests (Vitest)
+
+Test the analysis and parsing layers against fixture data:
+
+- **`event-log-reader.test.ts`**: Parse fixture event log → verify event counts by type, field presence, timestamp ordering
+- **`transcript-reader.test.ts`**: Parse fixture transcript → verify `message.id` grouping (multiple streaming chunks → single API call group, with `requestId` preserved for turn association), `<synthetic>` filtering, content block extraction, title/slug extraction, `messageId` population, fallback grouping warnings. Also: tool result normalization (structured `toolUseResult` enriches `tool_result` without overriding, string `toolUseResult` ignored, absent `toolUseResult` handled gracefully). DAG parent-child link verification deferred to Phase 5b tests.
+- **`subagent-reader.test.ts`**: Parse fixture subagent → verify meta.json loading, transcript linking
+- **`cost-calculator.test.ts`**: Known model → exact cost. Unknown model → prefix match. Unrecognizable model → null cost with warning. `<synthetic>` → skipped.
+- **`token-tracker.test.ts`**: Cumulative totals across API calls, cache rate calculation, per-model breakdown
+- **`context-decomposer.test.ts`**: Proportional attribution sums to authoritative total. Compaction resets decomposition. Post-compaction "compacted summary" category is correctly sized.
+- **`tool-analyzer.test.ts`**: Sequential PreToolUse→PostToolUse pairing. Ambiguous cases → latency unavailable. Success rate calculation.
+- **`compaction-analyzer.test.ts`**: preTokens extraction, post-compaction size inference, cache rate recovery tracking
+- **`session-index.test.ts`**: Staleness detection — event log mtime change triggers recompute, transcript-only mtime change triggers recompute, subagent-only mtime change triggers recompute, deleted event log removes cached entry, new session is added. Also verify the partial-data `skippedLines` count propagates to the summary.
+
+### Integration tests
+
+- **Session loading**: Load a fixture session through the full pipeline (discovery → parse → analyze) and verify the composite result has all expected fields
+- **API route**: Hit `/api/sessions` and `/api/sessions/[id]` with fixture data and verify response shape
+
+### What NOT to test
+
+- UI rendering (charts, layout) — visual verification during development is sufficient for a single-user local tool
+- External pricing fetching — the script is run manually and the output is checked in
 
 ## Verification
 
@@ -542,7 +764,7 @@ Additional analyses the data supports beyond the five core views:
 
 1. **Startup**: `npm run dev` → app loads, sidebar shows discovered sessions
 2. **Session index**: Verify all sessions from `~/.claude/logs/` appear with correct metadata (title from custom-title record, model from SessionStart, duration from first/last event timestamps)
-3. **Token accuracy**: For a known session, compare dashboard's total tokens with manual sum of transcript usage fields (deduplicating by requestId, excluding `<synthetic>` records)
+3. **Token accuracy**: For a known session, compare dashboard's total tokens with manual sum of transcript usage fields (deduplicating by `message.id`, excluding `<synthetic>` records)
 4. **Cost accuracy**: Cross-check cost calculation against Claude API pricing page for each known model
 5. **Compaction**: Verify compaction events appear at correct positions. `preTokens` is exact (from `compactMetadata.preTokens`). Post-compaction size is labeled as inferred (`~`) and derived from the next API call's total input tokens.
 6. **Tool latency**: Spot-check a few tool calls — confirm latency matches sequential PreToolUse→PostToolUse pairing by tool_name
@@ -555,11 +777,15 @@ Additional analyses the data supports beyond the five core views:
 3. **Missing thinking**: Assistant records with empty thinking blocks show "No thinking" collapsed state, not an error
 4. **Incomplete sessions**: Sessions without a SessionEnd event (interrupted) show duration based on last event timestamp, marked as "interrupted"
 5. **Subagent aggregation**: Verify session total shows "$X total (main: $Y, subagents: $Z)" breakdown. Overview dashboard total spend = sum of all session totals (main + subagents). Verify the overview total matches the sum of session row costs.
+6. **Partial data warning**: Load a session with a truncated/malformed transcript line. Verify the parser skips the bad line, the `skippedLines` count is nonzero, and the UI shows the "Partial data" warning badge.
 
 ## Critical Files
 
 - `src/lib/server/transcript-reader.ts` — most complex parser (streaming chunk grouping, DAG construction, subagent correlation)
 - `src/lib/analysis/context-decomposer.ts` — core challenge (estimating context composition from aggregate token counts)
 - `src/lib/analysis/cost-calculator.ts` — must stay in sync with actual Anthropic pricing
+- `src/lib/pricing-data.json` — checked-in pricing table, updated by script
+- `scripts/update-pricing.ts` — fetches current Anthropic pricing, updates pricing-data.json
 - `src/lib/types.ts` — shared types drive the entire app
 - `src/routes/+layout.svelte` — app shell that every view lives inside
+- `tests/fixtures/` — representative session data for development and testing

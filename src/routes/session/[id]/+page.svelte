@@ -96,9 +96,26 @@
 		</div>
 	{/if}
 
-	<div class="mb-4 flex gap-1 overflow-x-auto border-b border-border">
+	<!-- svelte-ignore a11y_interactive_supports_focus -->
+	<div
+		class="mb-4 flex gap-1 overflow-x-auto border-b border-border"
+		role="tablist"
+		onkeydown={(e: KeyboardEvent) => {
+			const idx = tabs.findIndex((t) => t.id === activeTab);
+			if (e.key === 'ArrowRight') {
+				e.preventDefault();
+				activeTab = tabs[(idx + 1) % tabs.length].id;
+			} else if (e.key === 'ArrowLeft') {
+				e.preventDefault();
+				activeTab = tabs[(idx - 1 + tabs.length) % tabs.length].id;
+			}
+		}}
+	>
 		{#each tabs as tab}
 			<button
+				role="tab"
+				aria-selected={activeTab === tab.id}
+				tabindex={activeTab === tab.id ? 0 : -1}
 				onclick={() => activeTab = tab.id}
 				class="whitespace-nowrap px-3 py-2 text-sm transition-colors
 					{activeTab === tab.id

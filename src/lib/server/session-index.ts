@@ -15,7 +15,7 @@ import { readAllSubagents, type SubagentData } from './subagent-reader.js';
 
 export { normalizeModel } from '$lib/pricing.js';
 
-const INDEX_VERSION = 1;
+const INDEX_VERSION = 2;
 
 /**
  * Resolve a transcript path that may be absolute on a different machine.
@@ -88,6 +88,7 @@ function computeSessionSummary(
 	transcriptTitle: string | null,
 	transcriptSlug: string | null,
 	compactionCount: number,
+	compactionPreTokens: number[],
 	skippedLines: number,
 	resolvedTranscriptPath: string | null,
 	mtimes: {
@@ -114,10 +115,18 @@ function computeSessionSummary(
 	// Turns = UserPromptSubmit count
 	const turns = events.filter((e) => e.event === 'UserPromptSubmit').length;
 
-	// Tool call count from event log
-	const toolCallCount = events.filter((e) => e.event === 'PostToolUse').length;
+	// Tool call counts from event log
+	const toolCounts: Record<string, number> = {};
+	for (const e of events) {
+		if (e.event === 'PostToolUse') {
+			const name = (e as { tool_name: string }).tool_name;
+			toolCounts[name] = (toolCounts[name] ?? 0) + 1;
+		}
+	}
+	const toolCallCount = Object.values(toolCounts).reduce((a, b) => a + b, 0);
 
 	// Token totals from API call groups (main + subagents)
+	const hasTranscript = resolvedTranscriptPath !== null;
 	const allGroups = [
 		...apiCallGroups,
 		...subagents.flatMap((s) => s.apiCallGroups),
@@ -132,8 +141,8 @@ function computeSessionSummary(
 		totalOutputTokens += g.usage.output_tokens ?? 0;
 	}
 
-	// Cost calculation
-	const costResult = computeSessionCost(allGroups);
+	// Cost calculation — null when transcript is missing (no API call data)
+	const costResult = hasTranscript ? computeSessionCost(allGroups) : { totalCost: null, costIsLowerBound: false, perCall: [] };
 
 	return {
 		sessionId: discovered.sessionId,
@@ -144,13 +153,16 @@ function computeSessionSummary(
 		endTime,
 		durationMs,
 		turns,
-		totalInputTokens,
-		totalOutputTokens,
+		totalInputTokens: hasTranscript ? totalInputTokens : 0,
+		totalOutputTokens: hasTranscript ? totalOutputTokens : 0,
 		totalCost: costResult.totalCost,
 		costIsLowerBound: costResult.costIsLowerBound,
 		compactionCount,
 		toolCallCount,
+		toolCounts,
 		subagentCount: subagents.length,
+		compactionPreTokens,
+		hasTranscript,
 		skippedLines,
 		eventLogPath: discovered.eventLogPath,
 		eventLogMtime: mtimes.eventLog,
@@ -254,6 +266,7 @@ export async function getSessionIndex(
 		let transcriptTitle: string | null = null;
 		let transcriptSlug: string | null = null;
 		let compactionCount = 0;
+		let compactionPreTokensList: number[] = [];
 		let transcriptSkipped = 0;
 		let subagents: SubagentData[] = [];
 
@@ -264,9 +277,14 @@ export async function getSessionIndex(
 			transcriptSlug = result.slug;
 			transcriptSkipped = result.skippedLines;
 
-			compactionCount = result.records.filter(
+			const compactionRecords = result.records.filter(
 				(r) => r.type === 'system' && 'subtype' in r && (r as { subtype: string }).subtype === 'compact_boundary',
-			).length;
+			);
+			compactionCount = compactionRecords.length;
+			compactionPreTokensList = compactionRecords.map((r) => {
+				const sys = r as { compactMetadata?: { preTokens?: number } };
+				return sys.compactMetadata?.preTokens ?? 0;
+			}).filter((n) => n > 0);
 
 			if (resolvedSessionDir) {
 				subagents = await readAllSubagents(resolvedSessionDir);
@@ -281,6 +299,7 @@ export async function getSessionIndex(
 			transcriptTitle,
 			transcriptSlug,
 			compactionCount,
+			compactionPreTokensList,
 			eventSkipped + transcriptSkipped + subagents.reduce((n, s) => n + s.skippedLines, 0),
 			resolvedTranscript,
 			{ eventLog: eventLogMtime, transcript: transcriptMtime, subagents: subagentMtimes },

@@ -39,7 +39,7 @@ describe('getSessionIndex', () => {
 		const cacheFile = join(tmpDir, '.cache', 'session-index.json');
 		const index = await getSessionIndex(tmpDir, cacheFile);
 
-		expect(index.version).toBe(1);
+		expect(index.version).toBe(2);
 		expect(index.sessions).toHaveLength(1);
 
 		const session = index.sessions[0];
@@ -93,6 +93,33 @@ describe('getSessionIndex', () => {
 		const index = await getSessionIndex(tmpDir, cacheFile);
 
 		expect(index.sessions[0].compactionCount).toBe(1);
+	});
+
+	it('stores per-tool call counts', async () => {
+		tmpDir = await mkdtemp(join(tmpdir(), 'facies-idx-'));
+		await cp(FIXTURES, tmpDir, { recursive: true });
+
+		const cacheFile = join(tmpDir, '.cache', 'session-index.json');
+		const index = await getSessionIndex(tmpDir, cacheFile);
+
+		const session = index.sessions[0];
+		expect(session.toolCounts).toBeDefined();
+		expect(typeof session.toolCounts).toBe('object');
+		// toolCallCount should equal sum of toolCounts values
+		const sum = Object.values(session.toolCounts).reduce((a, b) => a + b, 0);
+		expect(sum).toBe(session.toolCallCount);
+	});
+
+	it('stores compaction preTokens values', async () => {
+		tmpDir = await mkdtemp(join(tmpdir(), 'facies-idx-'));
+		await cp(FIXTURES, tmpDir, { recursive: true });
+
+		const cacheFile = join(tmpDir, '.cache', 'session-index.json');
+		const index = await getSessionIndex(tmpDir, cacheFile);
+
+		const session = index.sessions[0];
+		expect(Array.isArray(session.compactionPreTokens)).toBe(true);
+		expect(session.compactionPreTokens).toHaveLength(session.compactionCount);
 	});
 
 	it('discovers subagents', async () => {

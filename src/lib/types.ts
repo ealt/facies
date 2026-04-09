@@ -544,7 +544,13 @@ export interface SessionSummary {
 	costIsLowerBound: boolean;
 	compactionCount: number;
 	toolCallCount: number;
+	/** Per-tool call counts (tool_name → count) from PostToolUse events */
+	toolCounts: Record<string, number>;
 	subagentCount: number;
+	/** Pre-compaction token counts for each compaction event */
+	compactionPreTokens: number[];
+	/** False when transcript was missing — token totals and cost are unavailable */
+	hasTranscript: boolean;
 	skippedLines: number;
 	// Source file metadata for staleness detection
 	eventLogPath: string;

@@ -4,7 +4,4 @@
 	let { data } = $props();
 </script>
 
-<div>
-	<h1 class="mb-6 text-2xl font-bold tracking-tight">Sessions</h1>
-	<OverviewDashboardView sessions={data.sessions} />
-</div>
+<OverviewDashboardView sessions={data.sessions} />

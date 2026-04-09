@@ -153,7 +153,8 @@ export interface ToolUseBlock {
 export interface ToolResultBlock {
 	type: 'tool_result';
 	tool_use_id: string;
-	content: string;
+	/** String in simple cases; array of content blocks (e.g., [{type:"text",text:"..."}]) in subagent/complex tool results */
+	content: string | unknown[];
 	is_error?: boolean;
 }
 

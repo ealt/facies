@@ -165,10 +165,19 @@ function extractToolResults(
 		for (const block of contentBlocks) {
 			if (block.type !== 'tool_result') continue;
 
+			// content can be a string or array of content blocks in real transcripts
+			const contentStr = typeof block.content === 'string'
+				? block.content
+				: Array.isArray(block.content)
+					? (block.content as Array<{ type: string; text?: string }>)
+						.filter((b) => b.type === 'text' && b.text)
+						.map((b) => b.text)
+						.join('\n')
+					: JSON.stringify(block.content);
 			const normalized: NormalizedToolResult = {
 				toolUseId: block.tool_use_id,
 				toolName: toolNameMap.get(block.tool_use_id) ?? 'unknown',
-				content: block.content,
+				content: contentStr,
 				isError: block.is_error ?? false,
 			};
 

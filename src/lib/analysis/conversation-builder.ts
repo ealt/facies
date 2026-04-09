@@ -130,6 +130,18 @@ function isToolResult(record: UserRecord): boolean {
 	return blocks.some((b) => b.type === 'tool_result');
 }
 
+/** Normalize tool_result content which can be a string or array of content blocks. */
+function normalizeToolResultContent(content: string | unknown[]): string {
+	if (typeof content === 'string') return content;
+	if (Array.isArray(content)) {
+		return (content as Array<{ type: string; text?: string }>)
+			.filter((b) => b.type === 'text' && b.text)
+			.map((b) => b.text)
+			.join('\n');
+	}
+	return JSON.stringify(content);
+}
+
 /** Get the first tool_result block's tool_use_id and content from a user record. */
 function extractToolResult(record: UserRecord): { toolUseId: string; content: string; isError: boolean } | null {
 	const msg = record.message;
@@ -137,7 +149,7 @@ function extractToolResult(record: UserRecord): { toolUseId: string; content: st
 	const blocks = msg.content as UserContentBlock[];
 	const tr = blocks.find((b) => b.type === 'tool_result');
 	if (!tr || tr.type !== 'tool_result') return null;
-	return { toolUseId: tr.tool_use_id, content: tr.content, isError: tr.is_error ?? false };
+	return { toolUseId: tr.tool_use_id, content: normalizeToolResultContent(tr.content), isError: tr.is_error ?? false };
 }
 
 /** Get the user-visible content string from a user record. */
@@ -147,7 +159,7 @@ function getUserContent(record: UserRecord): string {
 	if (typeof msg.content === 'string') return msg.content;
 	const blocks = msg.content as UserContentBlock[];
 	return blocks
-		.map((b) => b.type === 'text' ? b.text : b.type === 'tool_result' ? b.content : '')
+		.map((b) => b.type === 'text' ? b.text : b.type === 'tool_result' ? normalizeToolResultContent(b.content) : '')
 		.filter(Boolean)
 		.join('\n');
 }

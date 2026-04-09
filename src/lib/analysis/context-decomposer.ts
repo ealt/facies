@@ -193,20 +193,31 @@ function processUserRecord(
 					cumulativeTokens: 0,
 					apiCallIndex,
 				});
-			} else if (block.type === 'tool_result' && block.content.length > 0) {
-				const est = estimateTokens(block.content);
-				const toolName = toolNameById.get(block.tool_use_id) ?? 'unknown';
-				const isSubagent = toolName === 'Agent';
-				const category: ContextCategory = isSubagent ? 'subagent_overhead' : 'tool_results';
-				raw[category] += est;
-				timeline.push({
-					timestamp: record.timestamp,
-					type: category,
-					description: `${toolName}: ${truncate(block.content, 60)}`,
-					estimatedTokens: est,
-					cumulativeTokens: 0,
-					apiCallIndex,
-				});
+			} else if (block.type === 'tool_result') {
+				// content can be a string or an array of content blocks in real transcripts
+				const contentStr = typeof block.content === 'string'
+					? block.content
+					: Array.isArray(block.content)
+						? (block.content as Array<{ type: string; text?: string }>)
+							.filter((b) => b.type === 'text' && b.text)
+							.map((b) => b.text)
+							.join('\n')
+						: JSON.stringify(block.content);
+				if (contentStr.length > 0) {
+					const est = estimateTokens(contentStr);
+					const toolName = toolNameById.get(block.tool_use_id) ?? 'unknown';
+					const isSubagent = toolName === 'Agent';
+					const category: ContextCategory = isSubagent ? 'subagent_overhead' : 'tool_results';
+					raw[category] += est;
+					timeline.push({
+						timestamp: record.timestamp,
+						type: category,
+						description: `${toolName}: ${truncate(contentStr, 60)}`,
+						estimatedTokens: est,
+						cumulativeTokens: 0,
+						apiCallIndex,
+					});
+				}
 			}
 		}
 	}

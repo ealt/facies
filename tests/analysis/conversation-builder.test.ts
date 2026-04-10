@@ -750,6 +750,79 @@ describe('buildConversationTree', () => {
 		expect(tree.nodeCount).toBe(3); // subagent + user + assistant
 	});
 
+	it('namespaces subagent descendant ids to avoid collisions with main and sibling trees', () => {
+		const records: TranscriptRecord[] = [
+			makeUserPrompt('shared-u', null, '2026-04-03T17:45:00.000Z', 'Explore'),
+			makeAssistant('shared-a', 'shared-u', '2026-04-03T17:45:10.000Z', 'msg-001', {
+				toolUse: { id: 'tool-1', name: 'Agent', input: {} },
+			}),
+			{
+				type: 'user',
+				uuid: 'tool-result-1',
+				parentUuid: 'shared-a',
+				isSidechain: false,
+				timestamp: '2026-04-03T17:45:30.000Z',
+				sourceToolAssistantUUID: 'shared-a',
+				toolUseResult: { agentId: 'sub1', agentType: 'Explore', content: 'Done' },
+				message: {
+					role: 'user',
+					content: [{ type: 'tool_result', tool_use_id: 'tool-1', content: 'Done' }],
+				},
+			} as unknown as UserRecord,
+			makeAssistant('shared-b', 'shared-u', '2026-04-03T17:46:10.000Z', 'msg-002', {
+				toolUse: { id: 'tool-2', name: 'Agent', input: {} },
+			}),
+			{
+				type: 'user',
+				uuid: 'tool-result-2',
+				parentUuid: 'shared-b',
+				isSidechain: false,
+				timestamp: '2026-04-03T17:46:30.000Z',
+				sourceToolAssistantUUID: 'shared-b',
+				toolUseResult: { agentId: 'sub2', agentType: 'Explore', content: 'Done' },
+				message: {
+					role: 'user',
+					content: [{ type: 'tool_result', tool_use_id: 'tool-2', content: 'Done' }],
+				},
+			} as unknown as UserRecord,
+		];
+		const apiGroups = [
+			makeApiGroup('msg-001', [{ id: 'tool-1', name: 'Agent' }]),
+			makeApiGroup('msg-002', [{ id: 'tool-2', name: 'Agent' }]),
+		];
+		const reusedSubagentRecords: TranscriptRecord[] = [
+			makeUserPrompt('shared-u', null, '2026-04-03T17:45:12.000Z', 'Find files'),
+			makeAssistant('shared-a', 'shared-u', '2026-04-03T17:45:15.000Z', 'sub-msg', { text: 'Found' }),
+		];
+		const subagents: SubagentInput[] = [
+			{
+				agentId: 'sub1',
+				meta: { agentType: 'Explore', description: 'Explorer 1' },
+				records: reusedSubagentRecords,
+				apiCallGroups: [],
+				toolResults: [],
+			},
+			{
+				agentId: 'sub2',
+				meta: { agentType: 'Explore', description: 'Explorer 2' },
+				records: reusedSubagentRecords,
+				apiCallGroups: [],
+				toolResults: [],
+			},
+		];
+
+		const tree = buildConversationTree(records, apiGroups, [], subagents);
+		const flat = flattenTree(tree.roots);
+		const ids = flat.map((node) => node.id);
+
+		expect(new Set(ids).size).toBe(ids.length);
+		expect(ids).toContain('shared-u');
+		expect(ids).toContain('shared-a');
+		expect(ids).toContain('subagent:sub1');
+		expect(ids).toContain('subagent:sub1:shared-u');
+		expect(ids).toContain('subagent:sub2:shared-u');
+	});
+
 	it('resolves children whose parent is a skipped synthetic record', () => {
 		// u1 → synth → u2: synth is skipped, u2 should find u1 via ancestor walk
 		const records: TranscriptRecord[] = [

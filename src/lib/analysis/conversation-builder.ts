@@ -537,9 +537,12 @@ function buildSubagentSubTree(sub: SubagentInput): SubagentNode {
 		? ('timestamp' in sub.records[0] ? (sub.records[0] as { timestamp: string }).timestamp : '')
 		: '';
 
+	const subagentId = `subagent:${sub.agentId}`;
+	namespaceNodeIds(innerTree.roots, subagentId);
+
 	return {
 		kind: 'subagent',
-		id: `subagent-${sub.agentId}`,
+		id: subagentId,
 		timestamp: firstTimestamp,
 		children: innerTree.roots,
 		depth: 0,
@@ -582,6 +585,21 @@ function collectAgentToolResults(roots: ConversationNode[]): ToolResultNode[] {
 	}
 	walk(roots);
 	return result;
+}
+
+/**
+ * Prefix node ids within a subtree so transcript UUIDs from subagents cannot
+ * collide with the main session or sibling subagents.
+ */
+function namespaceNodeIds(nodes: ConversationNode[], scope: string): void {
+	function walk(currentNodes: ConversationNode[]) {
+		for (const node of currentNodes) {
+			node.id = `${scope}:${node.id}`;
+			walk(node.children);
+		}
+	}
+
+	walk(nodes);
 }
 
 // =============================================================================

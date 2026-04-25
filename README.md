@@ -6,6 +6,8 @@ Facies analyzes the layers of your context window -- what fills it, what it
 costs, and how compaction reshapes it. It reads Claude Code session data from
 your local `~/.claude/` directory and presents it as an interactive dashboard.
 
+![](context.png)
+
 ## What It Shows
 
 - **Overview Dashboard** -- total spend, token usage trends, tool distribution, session table with sort/filter/search

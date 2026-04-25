@@ -13,6 +13,10 @@
 		"test": "vitest run",
 		"test:watch": "vitest"
 	},
+	"overrides": {
+		"cookie": "0.7.2",
+		"postcss": "8.5.10"
+	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/adapter-node": "^5.5.4",

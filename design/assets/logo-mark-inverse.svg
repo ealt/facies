@@ -1,0 +1,10 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="Facies (inverse)">
+  <rect x="0" y="0" width="24" height="24" fill="#ffb000"></rect>
+  <rect x="2" y="3" width="20" height="3" fill="#000000"></rect>
+  <rect x="2" y="7" width="20" height="2" fill="#000000"></rect>
+  <rect x="2" y="10" width="20" height="3" fill="#000000"></rect>
+  <rect x="2" y="14" width="20" height="2" fill="#000000"></rect>
+  <rect x="2" y="17" width="20" height="4" fill="#000000"></rect>
+  <rect x="11" y="2" width="1" height="20" fill="#ffb000"></rect>
+</svg>

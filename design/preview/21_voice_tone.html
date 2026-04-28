@@ -1,0 +1,33 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Voice & Tone</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .row { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .row:last-child { border-bottom: 0; }
+  .lab { font-family: var(--font-mono); font-size: 10px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .06em; }
+  .ex { font-size: 13px; margin-top: 4px; }
+  .yes { color: #4ade80; }
+  .no { color: #f87171; text-decoration: line-through; opacity: .8; }
+</style></head><body><div class="card">
+  <div class="row">
+    <div class="lab">empty state</div>
+    <div class="ex"><span class="yes">No sessions match the current filters.</span></div>
+    <div class="ex"><span class="no">Oops! Looks like nothing here yet 🔍</span></div>
+  </div>
+  <div class="row">
+    <div class="lab">warning</div>
+    <div class="ex"><span class="yes">Partial data — 4 malformed lines skipped. Session may be in progress or incomplete.</span></div>
+  </div>
+  <div class="row">
+    <div class="lab">footnote</div>
+    <div class="ex"><span class="yes">~estimated breakdown · totals are exact</span></div>
+  </div>
+  <div class="row">
+    <div class="lab">metric label</div>
+    <div class="ex"><span class="yes">Cache Hit Rate · Avg Cost/Turn · Saved by Caching</span></div>
+  </div>
+  <div class="row">
+    <div class="lab">forensic, not friendly</div>
+    <div class="ex"><span class="no">Welcome back!</span></div>
+  </div>
+</div></body></html>

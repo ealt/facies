@@ -1,0 +1,20 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Semantic Colors</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .grid2 { display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .pair { display: grid; grid-template-columns: 60px 1fr; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
+  .chip { height: 40px; border-radius: 6px; }
+  .meta { display: flex; flex-direction: column; gap: 2px; font-family: var(--font-mono); font-size: 11px; }
+  .name { color: var(--foreground); font-weight: 500; }
+  .val { color: var(--muted-foreground); font-size: 10px; }
+</style></head><body><div class="card">
+  <div class="grid2">
+    <div class="pair"><div class="chip" style="background:oklch(0.985 0 0);"></div><div class="meta"><div class="name">--primary</div><div class="val">oklch(0.985 0 0)</div></div></div>
+    <div class="pair"><div class="chip" style="background:oklch(0.269 0 0);"></div><div class="meta"><div class="name">--secondary</div><div class="val">oklch(0.269 0 0)</div></div></div>
+    <div class="pair"><div class="chip" style="background:oklch(0.269 0 0);"></div><div class="meta"><div class="name">--muted / --accent</div><div class="val">oklch(0.269 0 0)</div></div></div>
+    <div class="pair"><div class="chip" style="background:oklch(0.396 0.141 25.723);"></div><div class="meta"><div class="name">--destructive</div><div class="val">oklch(0.396 0.141 25.723)</div></div></div>
+    <div class="pair"><div class="chip" style="background:oklch(0.269 0 0); border:1px solid oklch(0.439 0 0);"></div><div class="meta"><div class="name">--border / --input</div><div class="val">oklch(0.269 0 0)</div></div></div>
+    <div class="pair"><div class="chip" style="background:oklch(0.439 0 0);"></div><div class="meta"><div class="name">--ring</div><div class="val">oklch(0.439 0 0)</div></div></div>
+  </div>
+</div></body></html>

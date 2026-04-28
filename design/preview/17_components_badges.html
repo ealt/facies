@@ -1,0 +1,31 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Badges</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .row { display:flex; flex-wrap: wrap; gap: 8px; align-items:center; margin-bottom: 12px; }
+  .lab { font-family: var(--font-mono); font-size: 10px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .pill { padding: 2px 8px; border-radius: 4px; font: 500 11px var(--font-mono); background: var(--muted); color: var(--muted-foreground); }
+  .cat { display:inline-flex; align-items:center; gap:6px; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500; }
+  .cat .d { width: 6px; height: 6px; border-radius: 50%; }
+  .alert { padding: 10px 12px; border-radius: 8px; font-size: 12px; }
+  .alert.warn { color: #fde68a; background: rgb(234 179 8 / 0.10); border: 1px solid rgb(234 179 8 / 0.30); }
+  .alert.info { color: #fed7aa; background: rgb(249 115 22 / 0.10); border: 1px solid rgb(249 115 22 / 0.30); }
+</style></head><body><div class="card">
+  <div class="lab">model / id pills</div>
+  <div class="row">
+    <span class="pill">claude-3-5-sonnet</span>
+    <span class="pill">claude-3-haiku</span>
+    <span class="pill">3f2a8b1e</span>
+  </div>
+  <div class="lab">category tag</div>
+  <div class="row">
+    <span class="cat" style="background:#3b82f620;color:#3b82f6;"><span class="d" style="background:#3b82f6"></span>User</span>
+    <span class="cat" style="background:#22c55e20;color:#22c55e;"><span class="d" style="background:#22c55e"></span>Assistant</span>
+    <span class="cat" style="background:#f9731620;color:#f97316;"><span class="d" style="background:#f97316"></span>Tool Result</span>
+    <span class="cat" style="background:#f59e0b20;color:#f59e0b;"><span class="d" style="background:#f59e0b"></span>Compacted</span>
+  </div>
+  <div class="lab">alerts</div>
+  <div class="alert warn">Warnings · 2 sessions had unrecognized model strings.</div>
+  <div style="height:6px;"></div>
+  <div class="alert info">Partial data — 4 malformed lines skipped. Session may be in progress or incomplete.</div>
+</div></body></html>

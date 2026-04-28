@@ -1,0 +1,28 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Brand</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .brand { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: center; }
+  .lockup { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display:flex; align-items:center; justify-content:center; }
+  .meta { display: flex; flex-direction: column; gap: 6px; }
+  .tag { font: var(--small); color: var(--muted-foreground); }
+  .name { font: 600 28px/1 var(--font-sans); letter-spacing: -0.02em; }
+  .pron { font: var(--code); color: var(--muted-foreground); }
+</style>
+</head><body><div class="card">
+  <div class="brand">
+    <div class="lockup">
+      <img src="../assets/logo-mark.svg" width="80" height="80" alt="Facies mark">
+    </div>
+    <div class="meta">
+      <div class="name">Facies</div>
+      <div class="pron">/ˈfeɪ.ʃiːz/ &middot; rhymes with "phases"</div>
+      <div class="tag">Context window stratigraphy. Session analytics for Claude Code.</div>
+      <div class="row" style="margin-top:8px;">
+        <span class="badge">geological</span>
+        <span class="badge">forensic</span>
+        <span class="badge">dark-first</span>
+      </div>
+    </div>
+  </div>
+</div></body></html>

@@ -1,0 +1,26 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Mono Specimens</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .grp { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
+  .lab { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 10px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .06em; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  .pill { display:inline-block; padding: 2px 6px; border-radius: 3px; background: var(--muted); margin-right: 4px; font-size: 11px; }
+</style></head><body><div class="card">
+  <div class="grp">
+    <div class="lab">model badge</div>
+    <div><span class="mono pill">claude-3-5-sonnet</span><span class="mono pill">claude-3-haiku</span></div>
+  </div>
+  <div class="grp">
+    <div class="lab">numbers in tables (right-aligned, 12px)</div>
+    <div class="mono" style="text-align:right; font-size:12px;">1.2M&nbsp;·&nbsp;340K&nbsp;·&nbsp;$0.043&nbsp;·&nbsp;87.4%&nbsp;·&nbsp;12s</div>
+  </div>
+  <div class="grp">
+    <div class="lab">query input (14px)</div>
+    <div class="mono" style="font-size:14px;">total_tokens &gt; 1M AND project = "facies"</div>
+  </div>
+  <div class="grp">
+    <div class="lab">session id / timestamp</div>
+    <div class="mono" style="font-size:11px; color: var(--muted-foreground);">3f2a8b1e-4c5d-4a6f-9e8b-7c1d2e3f4a5b · 14:22:07</div>
+  </div>
+</div></body></html>

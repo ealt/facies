@@ -1,0 +1,35 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Buttons</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items:center; }
+  .btn { font: var(--p); font-size: 14px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--input); background: var(--background); color: var(--foreground); cursor: pointer; transition: background-color .15s; }
+  .btn:hover { background: var(--muted); }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); border-color: transparent; }
+  .btn.tab { background: transparent; color: var(--muted-foreground); padding: 4px 10px; font-size: 12px; }
+  .btn.tab.active { background: rgba(255,255,255,.12); color: var(--foreground); font-weight: 500; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .seg .btn.tab { border-radius: 0; border: 0; }
+  .icon { display:inline-flex; align-items:center; justify-content:center; width: 28px; height: 28px; border-radius: 6px; color: var(--muted-foreground); cursor: pointer; transition: background-color .15s, color .15s; }
+  .icon:hover { background: var(--muted); color: var(--foreground); }
+  .lab { font-family: var(--font-mono); font-size: 10px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .06em; margin: 8px 0 6px; }
+</style></head><body><div class="card">
+  <div class="lab">primary / secondary</div>
+  <div class="row">
+    <button class="btn primary">Save</button>
+    <button class="btn">Columns</button>
+    <button class="btn">Group by</button>
+  </div>
+  <div class="lab">segmented (cumulative / incremental)</div>
+  <div class="row">
+    <div class="seg">
+      <button class="btn tab active">Cumulative</button>
+      <button class="btn tab">Incremental</button>
+    </div>
+  </div>
+  <div class="lab">icon button</div>
+  <div class="row">
+    <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></span>
+    <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>
+  </div>
+</div></body></html>

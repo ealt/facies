@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>FACIES · STATES</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"/>
+<style>
+  /* Pull tokens from index.html — keep in sync */
+  :root {
+    --bg-0: #0A0B0D;
+    --bg-1: #0F1115;
+    --bg-2: #14171C;
+    --bg-3: #1A1E25;
+    --ink:   #E6E8EB;
+    --ink-2: #B4B8BF;
+    --ink-3: #7A8089;
+    --ink-4: #4A4F57;
+    --border:   #1F2329;
+    --border-2: #2A2F37;
+    --signal-amber: #F0B22D;
+    --signal-amber-dim: #8A6418;
+    --signal-cyan:  #4FB8C9;
+    --signal-green: #6FB85F;
+    --signal-red:   #D4624A;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+    --code: 12px/1.55 var(--font-mono);
+    --small: 11px/1.5 var(--font-mono);
+    --label: 10px/1.4 var(--font-mono);
+    --tracked: 0.08em;
+    --tracked-tight: 0.03em;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg-0); color: var(--ink); margin: 0; }
+  body { font: 13px/1.5 var(--font-sans); }
+  h1, h2, h3 { font-family: var(--font-mono); font-weight: 500; letter-spacing: var(--tracked-tight); }
+
+  /* Page chrome */
+  .doc {
+    max-width: 1400px; margin: 0 auto; padding: 48px 56px 120px;
+  }
+  .doc-head {
+    border-bottom: 1px solid var(--border-2);
+    padding-bottom: 20px; margin-bottom: 36px;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .doc-title {
+    font: 11px/1.4 var(--font-mono);
+    letter-spacing: var(--tracked); text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .doc-title strong { color: var(--ink); font-weight: 500; }
+  .doc-title em { font-style: normal; color: var(--signal-amber); }
+  .doc-meta { font: var(--small); color: var(--ink-3); }
+
+  .intro {
+    font: 13px/1.6 var(--font-sans); color: var(--ink-2);
+    max-width: 64ch; margin-bottom: 48px;
+  }
+  .intro b { color: var(--ink); font-weight: 500; }
+
+  /* Section */
+  section { margin-bottom: 72px; }
+  .sec-head {
+    display: flex; align-items: baseline; gap: 16px;
+    border-bottom: 1px dotted var(--border-2);
+    padding-bottom: 8px; margin-bottom: 20px;
+  }
+  .sec-num {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--signal-amber); letter-spacing: var(--tracked);
+    border: 1px solid var(--signal-amber-dim);
+    padding: 2px 8px;
+  }
+  .sec-title {
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--ink); text-transform: uppercase;
+    letter-spacing: var(--tracked-tight); font-weight: 500; margin: 0;
+  }
+  .sec-desc { color: var(--ink-3); font: var(--small); margin-left: auto; }
+
+  /* Demo frame — shows the state inside a panel for context */
+  .demo-grid {
+    display: grid; gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+  }
+  .demo {
+    border: 1px solid var(--border);
+    background: var(--bg-1);
+    display: flex; flex-direction: column;
+  }
+  .demo-label {
+    font: var(--label); color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: var(--tracked);
+    padding: 8px 12px;
+    border-bottom: 1px dotted var(--border-2);
+    display: flex; justify-content: space-between;
+  }
+  .demo-label .when { color: var(--signal-cyan); }
+  .demo-body {
+    padding: 0;
+    background: var(--bg-1);
+  }
+  .demo-body .panel {
+    margin: 0; border: none;
+  }
+
+  /* Reproduce panel basics */
+  .panel { border: 1px solid var(--border); background: var(--bg-1); margin-bottom: 14px; }
+  .panel-head {
+    border-bottom: 1px solid var(--border);
+    padding: 6px 12px;
+    font: var(--label); color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: var(--tracked);
+    display: flex; justify-content: space-between;
+  }
+  .panel-body { padding: 12px; min-height: 200px; }
+  .est { color: var(--ink-3); }
+
+  /* States CSS — copied from index.html .status-block */
+  .status-block {
+    border: 1px solid var(--ink-3);
+    padding: 18px 20px;
+    background:
+      repeating-linear-gradient(
+        135deg,
+        transparent 0 8px,
+        rgba(255,255,255,0.012) 8px 9px
+      ),
+      var(--bg-1);
+    display: flex; flex-direction: column; gap: 10px;
+    color: var(--ink-2);
+    font: var(--small);
+    max-width: 720px;
+    margin: 24px auto;
+  }
+  .sb-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .sb-glyph { line-height: 0; }
+  .sb-code {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: var(--tracked); text-transform: uppercase;
+    padding: 1px 6px; border: 1px solid currentColor;
+  }
+  .sb-title {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+    color: var(--ink); letter-spacing: var(--tracked-tight);
+    text-transform: uppercase;
+  }
+  .sb-detail { color: var(--ink-2); line-height: 1.5; max-width: 60ch; }
+  .sb-meta {
+    border-top: 1px dotted var(--border);
+    border-bottom: 1px dotted var(--border);
+    padding: 8px 0; margin: 4px 0;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .sb-meta-row { display: flex; gap: 12px; font-size: 11px; }
+  .sb-meta-k {
+    color: var(--ink-3); font-size: 10px;
+    text-transform: uppercase; letter-spacing: var(--tracked);
+    min-width: 110px;
+  }
+  .sb-meta-v {
+    color: var(--ink); font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .sb-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .sb-action {
+    background: transparent; color: var(--ink-2);
+    border: 1px solid var(--border-2);
+    padding: 5px 12px;
+    font: var(--small); cursor: pointer;
+    text-transform: uppercase; letter-spacing: var(--tracked-tight);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .sb-action:hover { color: var(--ink); border-color: var(--ink-3); }
+  .sb-action.primary {
+    color: var(--signal-amber); border-color: var(--signal-amber);
+  }
+  .sb-action.primary:hover { background: var(--signal-amber); color: #000; }
+  .sb-kbd { display: inline-block; padding: 0 5px; border: 1px solid currentColor; font-size: 9px; opacity: 0.7; }
+
+  .skeleton { font-family: var(--font-mono); font-size: 12px; line-height: 1.7; padding: 8px 0; }
+  .skel-line { animation: skel-pulse 1.2s ease-in-out infinite; opacity: 0.6; }
+  @keyframes skel-pulse {
+    0%, 100% { opacity: 0.35; }
+    50%      { opacity: 0.7; }
+  }
+  .skel-table { width: 100%; border-collapse: collapse; }
+  .skel-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .skel-cell { display: inline-block; height: 8px; background: var(--ink-3); opacity: 0.18; animation: skel-pulse 1.2s ease-in-out infinite; }
+
+  /* Inline state: small status for cells, header strips */
+  .inline-state {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    font: var(--small); color: var(--ink-3);
+  }
+  .inline-state .code {
+    font-size: 9px; letter-spacing: var(--tracked);
+    border: 1px solid currentColor; padding: 0 4px;
+  }
+  .inline-state.amber { color: var(--signal-amber); }
+  .inline-state.red { color: var(--signal-red); }
+  .inline-state.cyan { color: var(--signal-cyan); }
+
+  /* Mini KPI for budget demo */
+  .kpis {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--border); margin: 0;
+  }
+  .kpi { padding: 10px 14px; border-right: 1px solid var(--border); }
+  .kpi:last-child { border-right: none; }
+  .kpi .l {
+    font: var(--label); color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: var(--tracked);
+  }
+  .kpi .v {
+    font-family: var(--font-mono); font-size: 18px;
+    color: var(--ink); margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi .v.red { color: var(--signal-red); }
+  .kpi .v.amber { color: var(--signal-amber); }
+  .kpi .sub { font: var(--label); color: var(--ink-3); margin-top: 2px; }
+
+  /* Notes blocks */
+  .note {
+    border-left: 2px solid var(--signal-amber-dim);
+    padding: 4px 12px;
+    color: var(--ink-3); font: var(--small);
+    margin: 16px 0;
+  }
+  .note b { color: var(--ink-2); }
+
+  /* Usage rules table */
+  .rules {
+    border: 1px solid var(--border);
+    background: var(--bg-1);
+    font: var(--small);
+  }
+  .rules .row {
+    display: grid;
+    grid-template-columns: 80px 120px 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+  .rules .row:last-child { border-bottom: none; }
+  .rules .row > div { padding: 10px 12px; border-right: 1px solid var(--border); }
+  .rules .row > div:last-child { border-right: none; }
+  .rules .head > div {
+    color: var(--ink-3); text-transform: uppercase;
+    letter-spacing: var(--tracked); font-size: 10px;
+  }
+  .rules .row .kind { text-transform: uppercase; letter-spacing: var(--tracked); font-size: 10px; }
+  .rules .row .when { color: var(--ink-2); }
+  .rules .row .copy { color: var(--ink-3); }
+
+  a.back {
+    display: inline-block; margin-top: 8px;
+    color: var(--signal-cyan); text-decoration: none;
+    font: var(--small);
+  }
+  a.back:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<div id="root"></div>
+
+<script type="text/babel" src="States.jsx"></script>
+<script type="text/babel">
+const { StatusBlock, SkeletonLines, SkeletonRows } = window;
+
+// ─── Demos ──────────────────────────────────────────────────
+
+function Demo({ when, label, children }) {
+  return (
+    <div className="demo">
+      <div className="demo-label"><span>{label}</span><span className="when">{when}</span></div>
+      <div className="demo-body">{children}</div>
+    </div>
+  );
+}
+
+function PanelFrame({ title, est, children }) {
+  return (
+    <div className="panel">
+      <div className="panel-head"><span>{title}</span>{est && <span className="est">{est}</span>}</div>
+      <div className="panel-body">{children}</div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <div className="doc">
+      <div className="doc-head">
+        <div className="doc-title">
+          <strong>FACIES · UI KIT · DASHBOARD</strong> &nbsp;/&nbsp; <em>STATES.04</em> &nbsp;/&nbsp; EMPTY · LOADING · ERROR · DEGRADED
+        </div>
+        <div className="doc-meta">v0.4 · 2026-04-25</div>
+      </div>
+
+      <div className="intro">
+        Facies treats absent data and degraded service as <b>first-class diagnostic information</b>, not failure.
+        Every panel can render in five states; each carries a status code, technical detail, and at most two recovery actions.
+        <br/><br/>
+        No friendly illustrations. No "Whoops!" copy. The ground truth is the system's actual condition, surfaced verbatim.
+      </div>
+
+      <a className="back" href="index.html">← BACK TO LIVE DASHBOARD</a>
+
+      {/* ─── Rules ─────────────────────────────────────────────── */}
+      <section style={{ marginTop: 48 }}>
+        <div className="sec-head">
+          <span className="sec-num">00</span>
+          <h2 className="sec-title">USAGE RULES</h2>
+          <span className="sec-desc">when to reach for which kind</span>
+        </div>
+        <div className="rules">
+          <div className="row head">
+            <div>KIND</div><div>CODE PREFIX</div><div>WHEN</div><div>COPY VOICE</div>
+          </div>
+          <div className="row">
+            <div className="kind" style={{ color: 'var(--ink-3)' }}>EMPTY</div>
+            <div className="copy">INFO / —</div>
+            <div className="when">Query returned zero rows. User-driven, not failure.</div>
+            <div className="copy">Factual. Echo the filter back. Suggest broadening.</div>
+          </div>
+          <div className="row">
+            <div className="kind" style={{ color: 'var(--signal-amber)' }}>LOADING</div>
+            <div className="copy">— (no code)</div>
+            <div className="when">Awaiting data. Use skeleton, not spinner.</div>
+            <div className="copy">Show what's coming. Skeleton matches final shape.</div>
+          </div>
+          <div className="row">
+            <div className="kind" style={{ color: 'var(--signal-red)' }}>ERROR</div>
+            <div className="copy">E001–E999</div>
+            <div className="when">Request failed. User cannot proceed without action.</div>
+            <div className="copy">Verbatim. Include exception, request id, retry verb.</div>
+          </div>
+          <div className="row">
+            <div className="kind" style={{ color: 'var(--signal-amber)' }}>WARN</div>
+            <div className="copy">W001–W999</div>
+            <div className="when">Degraded. Data partial, stale, or rate-limited.</div>
+            <div className="copy">State the degradation, then the workaround.</div>
+          </div>
+          <div className="row">
+            <div className="kind" style={{ color: 'var(--signal-cyan)' }}>INFO</div>
+            <div className="copy">INFO</div>
+            <div className="when">Empty by design — feature unconfigured.</div>
+            <div className="copy">Brief. Setup verb, link to docs.</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Empty ─────────────────────────────────────────────── */}
+      <section>
+        <div className="sec-head">
+          <span className="sec-num">01</span>
+          <h2 className="sec-title">EMPTY</h2>
+          <span className="sec-desc">no rows match — user-driven, not failure</span>
+        </div>
+        <div className="demo-grid">
+          <Demo when="Query bar with no matches" label="SESSIONS · OVERVIEW">
+            <PanelFrame title='QUERY · F8 ·  project = "atlas" AND total_tokens &gt; 50M' est="0 OF 247 ROWS">
+              <StatusBlock
+                kind="empty"
+                code="E000"
+                title="NO ROWS MATCH FILTER"
+                detail="The current query returned 0 of 247 sessions. Your project filter may be too narrow, or the token threshold may exceed any single session in the dataset."
+                meta={[
+                  { k: 'PROJECT', v: 'atlas' },
+                  { k: 'MIN TOKENS', v: '50,000,000' },
+                  { k: 'MATCHED', v: '0 / 247' },
+                ]}
+                actions={[
+                  { label: 'CLEAR QUERY', kbd: '⌘K', primary: true },
+                  { label: 'BROADEN TO > 10M' },
+                  { label: 'COPY QUERY' },
+                ]}
+              />
+            </PanelFrame>
+          </Demo>
+
+          <Demo when="Project view, no compactions yet" label="COMPACTIONS · PROJECT">
+            <PanelFrame title="COMPACTION HISTORY · facies" est="0 ROWS">
+              <StatusBlock
+                kind="empty"
+                code="E000"
+                title="NO COMPACTIONS RECORDED"
+                detail="This project has not run any compactions in the selected window. Compactions are triggered automatically when context exceeds 70% of the model window."
+                meta={[
+                  { k: 'WINDOW', v: 'last 30d' },
+                  { k: 'SESSIONS', v: '12' },
+                  { k: 'CTX HIGH-WATER', v: '52%' },
+                ]}
+                actions={[
+                  { label: 'EXPAND WINDOW', primary: true },
+                  { label: 'VIEW THRESHOLDS' },
+                ]}
+              />
+            </PanelFrame>
+          </Demo>
+        </div>
+      </section>
+
+      {/* ─── Loading ──────────────────────────────────────────── */}
+      <section>
+        <div className="sec-head">
+          <span className="sec-num">02</span>
+          <h2 className="sec-title">LOADING</h2>
+          <span className="sec-desc">skeleton matches final shape — never a centered spinner</span>
+        </div>
+        <div className="demo-grid">
+          <Demo when="Sessions table, awaiting fetch" label="SESSIONS · LOADING">
+            <PanelFrame title="SESSIONS" est="STREAMING…">
+              <SkeletonRows rows={6} cols={6} />
+            </PanelFrame>
+          </Demo>
+
+          <Demo when="Message thread, fetching transcript" label="THREAD · LOADING">
+            <PanelFrame title="MESSAGE THREAD" est="DECODING…">
+              <SkeletonLines rows={8} />
+              <div className="inline-state amber" style={{ padding: '8px 0', borderTop: '1px dotted var(--border)', marginTop: 8 }}>
+                <span className="code">EST</span>
+                <span>FETCHING 142 MESSAGES · ~2.1 MB · KEEP-ALIVE</span>
+              </div>
+            </PanelFrame>
+          </Demo>
+        </div>
+      </section>
+
+      {/* ─── Error ────────────────────────────────────────────── */}
+      <section>
+        <div className="sec-head">
+          <span className="sec-num">03</span>
+          <h2 className="sec-title">ERROR</h2>
+          <span className="sec-desc">verbatim — exception, request id, retry verb</span>
+        </div>
+        <div className="demo-grid">
+          <Demo when="API timeout / network failure" label="SESSIONS · ERROR">
+            <PanelFrame title="SESSIONS" est="LOAD FAILED">
+              <StatusBlock
+                kind="error"
+                code="E521"
+                title="UPSTREAM TIMEOUT"
+                detail="GET /v1/sessions did not return within 30s. The compute backend may be saturated or partitioned. Last successful sync was 4 minutes ago."
+                meta={[
+                  { k: 'REQUEST ID', v: 'req_8f3a91c2bd' },
+                  { k: 'STATUS',     v: 'gateway-timeout (504)' },
+                  { k: 'RETRIED',    v: '3 / 3' },
+                  { k: 'DURATION',   v: '30,041 ms' },
+                ]}
+                actions={[
+                  { label: 'RETRY', kbd: 'R', primary: true },
+                  { label: 'COPY REQUEST ID' },
+                  { label: 'STATUS PAGE' },
+                ]}
+              />
+            </PanelFrame>
+          </Demo>
+
+          <Demo when="Permission denied to a resource" label="PROJECT · ACCESS DENIED">
+            <PanelFrame title="PROJECT · atlas" est="DENIED">
+              <StatusBlock
+                kind="error"
+                code="E403"
+                title="ACCESS DENIED"
+                detail="Your token does not include scope `project:read` for this project. Workspace admin can grant access."
+                meta={[
+                  { k: 'PROJECT',  v: 'atlas' },
+                  { k: 'TOKEN',    v: 'tok_…b91' },
+                  { k: 'YOUR ROLE',v: 'observer' },
+                  { k: 'REQUIRED', v: 'member · admin' },
+                ]}
+                actions={[
+                  { label: 'REQUEST ACCESS', primary: true },
+                  { label: 'SWITCH TOKEN' },
+                ]}
+              />
+            </PanelFrame>
+          </Demo>
+        </div>
+      </section>
+
+      {/* ─── Warn ─────────────────────────────────────────────── */}
+      <section>
+        <div className="sec-head">
+          <span className="sec-num">04</span>
+          <h2 className="sec-title">WARN — DEGRADED</h2>
+          <span className="sec-desc">data partial, stale, rate-limited, or threshold breached</span>
+        </div>
+        <div className="demo-grid">
+          <Demo when="Budget breach detected" label="HEADER · OVER BUDGET">
+            <div style={{ padding: 12 }}>
+              <div className="kpis" style={{ marginBottom: 14 }}>
+                <div className="kpi"><div className="l">SPEND · MTD</div><div className="v red">$1,847.20</div><div className="sub">budget $1,000.00</div></div>
+                <div className="kpi"><div className="l">% OF BUDGET</div><div className="v red">184.7%</div><div className="sub">over by $847.20</div></div>
+                <div className="kpi"><div className="l">DAYS LEFT</div><div className="v amber">9</div><div className="sub">april 25 · burn $73/d</div></div>
+                <div className="kpi"><div className="l">PROJECTED</div><div className="v red">$2,504</div><div className="sub">at current rate</div></div>
+              </div>
+              <StatusBlock
+                kind="warn"
+                code="W402"
+                title="MONTHLY BUDGET EXCEEDED"
+                detail="Spend on workspace facies-prod has crossed the $1,000 monthly cap. New API calls are still flowing; raise the cap or enable rate-limit to prevent overage."
+                meta={[
+                  { k: 'BUDGET',     v: '$1,000.00 / mo' },
+                  { k: 'SPENT',      v: '$1,847.20 (184.7%)' },
+                  { k: 'TOP DRIVER', v: 'sonnet · 62% of spend' },
+                  { k: 'NOTIFIED',   v: 'apr-19, apr-22 (slack)' },
+                ]}
+                actions={[
+                  { label: 'RAISE CAP', primary: true },
+                  { label: 'ENABLE RATE LIMIT' },
+                  { label: 'AUDIT TOP SESSIONS' },
+                ]}
+              />
+            </div>
+          </Demo>
+
+          <Demo when="Stale data — pipeline lag" label="OVERVIEW · STALE">
+            <PanelFrame title="OVERVIEW" est="DATA STALE 14m">
+              <StatusBlock
+                kind="warn"
+                code="W118"
+                title="DATA LAG · 14 MINUTES"
+                detail="The aggregation pipeline is behind real-time. Numbers shown reflect the state at 14:42 UTC. Live sessions completed since then are not yet included in totals."
+                meta={[
+                  { k: 'LAST INGEST', v: '14:42 UTC · 14m ago' },
+                  { k: 'PIPELINE',    v: 'aggregator-3 (degraded)' },
+                  { k: 'PENDING',     v: '~3,400 events' },
+                ]}
+                actions={[
+                  { label: 'SHOW ANYWAY', primary: true },
+                  { label: 'PIPELINE STATUS' },
+                ]}
+              />
+            </PanelFrame>
+          </Demo>
+        </div>
+      </section>
+
+      {/* ─── Info ─────────────────────────────────────────────── */}
+      <section>
+        <div className="sec-head">
+          <span className="sec-num">05</span>
+          <h2 className="sec-title">INFO — UNCONFIGURED</h2>
+          <span className="sec-desc">empty by design; feature awaiting setup</span>
+        </div>
+        <div className="demo-grid">
+          <Demo when="Budget never set" label="HEADER · NO BUDGET">
+            <PanelFrame title="BUDGET CONTROLS" est="UNCONFIGURED">
+              <StatusBlock
+                kind="info"
+                code="INFO"
+                title="NO BUDGET CONFIGURED"
+                detail="Set a monthly cap to receive Slack alerts at 50%, 80%, and 100% of spend. Caps do not enforce limits unless rate-limit is also enabled."
+                actions={[
+                  { label: 'SET BUDGET', kbd: 'B', primary: true },
+                  { label: 'BUDGET DOCS' },
+                ]}
+              />
+            </PanelFrame>
+          </Demo>
+
+          <Demo when="Webhooks not configured" label="ALERTS · UNCONFIGURED">
+            <PanelFrame title="ALERTS · WEBHOOKS" est="0 / 3">
+              <StatusBlock
+                kind="info"
+                code="INFO"
+                title="NO ALERT DESTINATIONS"
+                detail="Configure Slack, PagerDuty, or webhook destinations to receive budget breaches, anomaly detections, and compaction failures."
+                meta={[
+                  { k: 'AVAILABLE', v: 'slack · pagerduty · webhook' },
+                  { k: 'CONFIGURED', v: 'none' },
+                ]}
+                actions={[
+                  { label: 'ADD DESTINATION', primary: true },
+                ]}
+              />
+            </PanelFrame>
+          </Demo>
+        </div>
+      </section>
+
+      {/* ─── Inline ───────────────────────────────────────────── */}
+      <section>
+        <div className="sec-head">
+          <span className="sec-num">06</span>
+          <h2 className="sec-title">INLINE STATES</h2>
+          <span className="sec-desc">single-cell or single-row degradation, not panel-level</span>
+        </div>
+        <div className="rules" style={{ padding: 0 }}>
+          <div className="row head">
+            <div>KIND</div><div>EXAMPLE</div><div className="copy" style={{ gridColumn: 'span 2' }}>USE</div>
+          </div>
+          <div className="row">
+            <div className="kind" style={{ color: 'var(--ink-3)' }}>NULL</div>
+            <div><span style={{ color: 'var(--ink-4)', fontFamily: 'var(--font-mono)' }}>—</span></div>
+            <div className="copy" style={{ gridColumn: 'span 2' }}>A single cell has no value. Em-dash, never "N/A" or "0".</div>
+          </div>
+          <div className="row">
+            <div className="kind" style={{ color: 'var(--signal-amber)' }}>STALE</div>
+            <div>
+              <span className="inline-state amber">
+                <span className="code">W118</span>
+                <span style={{ color: 'var(--ink-2)' }}>$847.20</span>
+                <span>· 14m old</span>
+              </span>
+            </div>
+            <div className="copy" style={{ gridColumn: 'span 2' }}>Cell value is older than the row's freshness budget. Annotate with code + age.</div>
+          </div>
+          <div className="row">
+            <div className="kind" style={{ color: 'var(--signal-red)' }}>FAIL</div>
+            <div>
+              <span className="inline-state red">
+                <span className="code">E521</span>
+                <span>fetch failed</span>
+              </span>
+            </div>
+            <div className="copy" style={{ gridColumn: 'span 2' }}>Cell could not be computed. Show code + verb. Click → error detail.</div>
+          </div>
+          <div className="row">
+            <div className="kind" style={{ color: 'var(--signal-cyan)' }}>PEND</div>
+            <div>
+              <span className="inline-state cyan">
+                <span className="code">···</span>
+                <span>computing</span>
+              </span>
+            </div>
+            <div className="copy" style={{ gridColumn: 'span 2' }}>Async cell still resolving. Three dots, no spinner.</div>
+          </div>
+        </div>
+      </section>
+
+      <div className="note" style={{ marginTop: 64 }}>
+        <b>NEXT</b> — these primitives are wired into the live dashboard via the Tweaks panel
+        (toggle <em>Tweaks</em> in the toolbar, then flip <em>STATE</em> to preview Empty / Loading / Error / Over-budget in context).
+      </div>
+
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>

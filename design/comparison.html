@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facies · Compare</title>
+<link rel="stylesheet" href="colors_and_type.css">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    background: var(--background);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  /* TOP CHROME — same idiom as dashboard */
+  .topbar {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-1);
+    display: flex; align-items: stretch;
+    height: 44px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .topbar .brand {
+    padding: 0 16px;
+    border-right: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    background: var(--background);
+  }
+  .topbar .brand .mark {
+    width: 18px; height: 18px;
+    background: var(--signal-amber);
+    color: #000; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; letter-spacing: -1px;
+  }
+  .topbar .brand .name {
+    font-weight: 600; letter-spacing: var(--tracked-tight);
+    font-size: 13px;
+  }
+  .topbar .crumbs {
+    padding: 0 16px;
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink-3); font-size: 11px;
+    letter-spacing: var(--tracked); text-transform: uppercase;
+  }
+  .topbar .crumbs .sep { color: var(--ink-4); }
+  .topbar .crumbs .here { color: var(--signal-amber); }
+  .topbar .grow { flex: 1; }
+  .topbar .meta {
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 16px;
+    border-left: 1px solid var(--border);
+    color: var(--ink-3); font-size: 11px;
+    letter-spacing: var(--tracked); text-transform: uppercase;
+  }
+  .topbar .meta kbd {
+    background: var(--bg-2); border: 1px solid var(--border);
+    padding: 1px 5px; font-size: 10px;
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+  }
+
+  /* PAGE TITLE */
+  .titlebar {
+    padding: 14px 22px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; justify-content: space-between;
+    background: var(--bg-1);
+  }
+  .titlebar h1 {
+    font: var(--h1); margin: 0;
+    color: var(--ink);
+    letter-spacing: var(--tracked-tight);
+  }
+  .titlebar h1 .lhs { color: var(--signal-cyan); }
+  .titlebar h1 .vs  { color: var(--ink-3); margin: 0 10px; font-weight: 400; }
+  .titlebar h1 .rhs { color: var(--signal-amber); }
+  .titlebar .swap {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--ink-3);
+    letter-spacing: var(--tracked); text-transform: uppercase;
+    border: 1px solid var(--border); background: var(--bg-2);
+    padding: 5px 10px; cursor: pointer;
+  }
+  .titlebar .swap kbd {
+    background: var(--background); border: 1px solid var(--border);
+    padding: 0 4px; margin-right: 4px;
+    color: var(--signal-amber);
+    font-family: var(--font-mono);
+  }
+
+  /* SESSION HEADER PANELS */
+  .header-row {
+    display: grid;
+    grid-template-columns: 1fr 120px 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+  .session-card {
+    padding: 18px 22px;
+    background: var(--bg-1);
+  }
+  .session-card.r {
+    border-left: 1px solid var(--border);
+  }
+  .session-card .id {
+    color: var(--signal-cyan);
+    font-size: 11px;
+    letter-spacing: var(--tracked);
+  }
+  .session-card.r .id { color: var(--signal-amber); }
+  .session-card .title {
+    font-size: 18px; font-weight: 500;
+    color: var(--ink);
+    margin: 6px 0 10px;
+    letter-spacing: var(--tracked-tight);
+  }
+  .session-card .row {
+    display: flex; gap: 24px;
+    color: var(--ink-3); font-size: 11px;
+    letter-spacing: var(--tracked); text-transform: uppercase;
+  }
+  .session-card .row b { color: var(--ink); font-weight: 500; }
+  .session-card .row .pip {
+    display: inline-block; width: 8px; height: 8px;
+    background: var(--signal-cyan); margin-right: 4px;
+    vertical-align: -1px;
+  }
+  .session-card.r .row .pip { background: var(--signal-amber); }
+  .delta-spine {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    background: var(--background);
+    color: var(--ink-3);
+    font-size: 9px; letter-spacing: var(--tracked); text-transform: uppercase;
+    text-align: center;
+    padding: 18px 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px;
+  }
+  .delta-spine .arrow { color: var(--signal-amber); font-size: 14px; }
+  .delta-spine .label { color: var(--ink-4); }
+
+  /* METRIC TABLE */
+  .table {
+    display: grid;
+    grid-template-columns: 1fr 120px 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+  .table .col {
+    border-right: 1px solid var(--border);
+  }
+  .table .col:last-child { border-right: none; }
+  .table .row-h {
+    grid-column: 1 / -1;
+    padding: 8px 22px;
+    background: var(--bg-2);
+    color: var(--ink-3);
+    font-size: 10px;
+    letter-spacing: var(--tracked);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .table .row-h .accent { color: var(--signal-amber); }
+  .metric-row {
+    display: contents;
+  }
+  .metric-row .lcell, .metric-row .rcell, .metric-row .dcell {
+    padding: 10px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 16px;
+  }
+  .metric-row .dcell {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    justify-content: center;
+    text-align: center;
+    color: var(--ink-3);
+    font-size: 11px;
+    background: var(--background);
+  }
+  .metric-row.last .lcell, .metric-row.last .rcell, .metric-row.last .dcell { border-bottom: none; }
+  .metric-row .label {
+    color: var(--ink-3);
+    font-size: 11px; letter-spacing: var(--tracked); text-transform: uppercase;
+  }
+  .metric-row .val {
+    color: var(--ink);
+    font-size: 14px; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--tracked-tight);
+  }
+  .metric-row .val.cost { color: var(--signal-green); }
+  .metric-row .val.cyan { color: var(--signal-cyan); }
+  .metric-row .val.amber { color: var(--signal-amber); }
+  .metric-row .val.dim { color: var(--ink-3); }
+  .delta-up   { color: var(--signal-red); }
+  .delta-dn   { color: var(--signal-green); }
+  .delta-flat { color: var(--ink-4); }
+  .delta-pp   { color: var(--ink-2); font-size: 10px; }
+
+  /* STRATIGRAPHY ROW */
+  .strat-row {
+    display: grid;
+    grid-template-columns: 1fr 120px 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+  .strat-cell {
+    padding: 16px 22px;
+    background: var(--bg-1);
+  }
+  .strat-cell.r { border-left: 1px solid var(--border); background: var(--bg-1); }
+  .strat-spine {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    background: var(--background);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-3);
+    font-size: 9px; letter-spacing: var(--tracked); text-transform: uppercase;
+    writing-mode: vertical-rl;
+  }
+  .strat-cell .h {
+    color: var(--ink-3); font-size: 11px;
+    letter-spacing: var(--tracked); text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex; justify-content: space-between;
+  }
+  .strat-cell .h .total { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .strat-svg {
+    width: 100%; height: 110px;
+    display: block;
+  }
+  .strat-cell .x {
+    display: flex; justify-content: space-between;
+    color: var(--ink-4); font-size: 10px;
+    letter-spacing: var(--tracked);
+    margin-top: 4px;
+  }
+
+  /* DIVERGENCE ROW */
+  .div-row {
+    display: grid; grid-template-columns: 1fr 120px 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+  .div-cell {
+    padding: 16px 22px;
+    background: var(--bg-1);
+  }
+  .div-cell.r { border-left: 1px solid var(--border); }
+  .div-cell .h {
+    color: var(--ink-3); font-size: 11px;
+    letter-spacing: var(--tracked); text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .div-cell .file {
+    display: flex; justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 12px;
+  }
+  .div-cell .file:last-child { border-bottom: none; }
+  .div-cell .file .path { color: var(--ink-2); }
+  .div-cell .file .pct  { color: var(--signal-amber); font-variant-numeric: tabular-nums; }
+  .div-cell.r .file .pct { color: var(--signal-cyan); }
+  .div-spine {
+    border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+    background: var(--background);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: var(--ink-4);
+    font-size: 9px;
+    letter-spacing: var(--tracked); text-transform: uppercase;
+    gap: 8px; padding: 16px 0;
+  }
+  .div-spine b { color: var(--signal-amber); font-size: 18px; font-weight: 400; }
+
+  /* shared & error */
+  .shared-row {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+  }
+  .shared-cell {
+    padding: 14px 22px;
+    border-right: 1px solid var(--border);
+    display: flex; align-items: center; gap: 18px;
+    color: var(--ink-3); font-size: 11px; letter-spacing: var(--tracked); text-transform: uppercase;
+  }
+  .shared-cell:last-child { border-right: none; }
+  .shared-cell .label { color: var(--ink-4); }
+  .shared-cell code {
+    color: var(--signal-amber); font-family: var(--font-mono); font-size: 12px;
+    letter-spacing: 0;
+  }
+  .shared-cell.win    { color: var(--signal-green); }
+  .shared-cell.lose   { color: var(--signal-red); }
+
+  /* footer */
+  .foot {
+    padding: 18px 22px;
+    color: var(--ink-4); font-size: 10px;
+    letter-spacing: var(--tracked); text-transform: uppercase;
+    text-align: center;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP CHROME -->
+<div class="topbar">
+  <div class="brand">
+    <div class="mark">/F</div>
+    <div class="name">facies</div>
+  </div>
+  <div class="crumbs">
+    <span>OVERVIEW</span><span class="sep">/</span>
+    <span>SESSIONS</span><span class="sep">/</span>
+    <span class="here">COMPARE</span>
+  </div>
+  <div class="grow"></div>
+  <div class="meta">
+    <span><kbd>S</kbd> SWAP</span>
+    <span><kbd>L</kbd> LINK SCROLL</span>
+    <span><kbd>ESC</kbd> EXIT</span>
+  </div>
+</div>
+
+<!-- TITLE BAR -->
+<div class="titlebar">
+  <h1><span class="lhs">7a1c4f92</span><span class="vs">vs</span><span class="rhs">a2e7f9c1</span></h1>
+  <button class="swap"><kbd>S</kbd>SWAP SIDES</button>
+</div>
+
+<!-- HEADERS -->
+<div class="header-row">
+  <div class="session-card l">
+    <div class="id">A · 7a1c4f92</div>
+    <div class="title">refactor session loader</div>
+    <div class="row">
+      <span><span class="pip"></span><b>facies</b></span>
+      <span>SONNET-4.5</span>
+      <span>2H 04M</span>
+      <span>40 TURNS</span>
+    </div>
+  </div>
+  <div class="delta-spine">
+    <div class="arrow">≢</div>
+    <div class="label">DELTA</div>
+  </div>
+  <div class="session-card r">
+    <div class="id">B · a2e7f9c1</div>
+    <div class="title">d3 timeline experiments</div>
+    <div class="row">
+      <span><span class="pip"></span><b>facies</b></span>
+      <span>SONNET-4.5</span>
+      <span>42M</span>
+      <span>18 TURNS</span>
+    </div>
+  </div>
+</div>
+
+<!-- METRIC TABLE -->
+<div class="table">
+  <div class="row-h">METRICS · <span class="accent">A vs B</span> · sorted by impact</div>
+
+  <div class="metric-row">
+    <div class="lcell">
+      <span class="label">DURATION</span>
+      <span class="val">1H 47M</span>
+    </div>
+    <div class="dcell"><span class="delta-up">+155%</span></div>
+    <div class="rcell">
+      <span class="label">DURATION</span>
+      <span class="val">42M</span>
+    </div>
+  </div>
+
+  <div class="metric-row">
+    <div class="lcell">
+      <span class="label">TOTAL TOKENS</span>
+      <span class="val">1.82M</span>
+    </div>
+    <div class="dcell"><span class="delta-up">+50%</span><div class="delta-pp">+0.61M</div></div>
+    <div class="rcell">
+      <span class="label">TOTAL TOKENS</span>
+      <span class="val">1.21M</span>
+    </div>
+  </div>
+
+  <div class="metric-row">
+    <div class="lcell">
+      <span class="label">COST</span>
+      <span class="val cost">$3.64</span>
+    </div>
+    <div class="dcell"><span class="delta-up">+50%</span><div class="delta-pp">+$1.21</div></div>
+    <div class="rcell">
+      <span class="label">COST</span>
+      <span class="val cost">$2.43</span>
+    </div>
+  </div>
+
+  <div class="metric-row">
+    <div class="lcell">
+      <span class="label">CACHE HIT</span>
+      <span class="val amber">78.2%</span>
+    </div>
+    <div class="dcell"><span class="delta-flat">−1.2pp</span></div>
+    <div class="rcell">
+      <span class="label">CACHE HIT</span>
+      <span class="val amber">79.4%</span>
+    </div>
+  </div>
+
+  <div class="metric-row">
+    <div class="lcell">
+      <span class="label">API CALLS</span>
+      <span class="val">47</span>
+    </div>
+    <div class="dcell"><span class="delta-up">+16</span></div>
+    <div class="rcell">
+      <span class="label">API CALLS</span>
+      <span class="val">31</span>
+    </div>
+  </div>
+
+  <div class="metric-row">
+    <div class="lcell">
+      <span class="label">COMPACTIONS</span>
+      <span class="val amber">⚡ 2</span>
+    </div>
+    <div class="dcell"><span class="delta-up">+2</span></div>
+    <div class="rcell">
+      <span class="label">COMPACTIONS</span>
+      <span class="val dim">—</span>
+    </div>
+  </div>
+
+  <div class="metric-row">
+    <div class="lcell">
+      <span class="label">SUBAGENTS</span>
+      <span class="val">3</span>
+    </div>
+    <div class="dcell"><span class="delta-up">+2</span></div>
+    <div class="rcell">
+      <span class="label">SUBAGENTS</span>
+      <span class="val">1</span>
+    </div>
+  </div>
+
+  <div class="metric-row last">
+    <div class="lcell">
+      <span class="label">ERRORS</span>
+      <span class="val" style="color: var(--signal-red);">2</span>
+    </div>
+    <div class="dcell"><span class="delta-up">+2</span></div>
+    <div class="rcell">
+      <span class="label">ERRORS</span>
+      <span class="val">0</span>
+    </div>
+  </div>
+</div>
+
+<!-- STRATIGRAPHY -->
+<div class="strat-row">
+  <div class="strat-cell l">
+    <div class="h"><span>STRATIGRAPHY · A</span><span class="total">1.82M tok at peak</span></div>
+    <svg id="stratA" class="strat-svg" viewBox="0 0 600 110" preserveAspectRatio="none"></svg>
+    <div class="x"><span>0:00</span><span>0:30</span><span>1:00</span><span>1:30</span><span>1:47</span></div>
+  </div>
+  <div class="strat-spine">SHARED TIME · 0:00 — 1:47</div>
+  <div class="strat-cell r">
+    <div class="h"><span>STRATIGRAPHY · B</span><span class="total">1.21M tok at peak</span></div>
+    <svg id="stratB" class="strat-svg" viewBox="0 0 600 110" preserveAspectRatio="none"></svg>
+    <div class="x"><span>0:00</span><span>0:15</span><span>0:30</span><span>0:42</span><span></span></div>
+  </div>
+</div>
+
+<!-- DIVERGENCE / TOP FILES -->
+<div class="div-row">
+  <div class="div-cell l">
+    <div class="h">A · TOP FILES <span style="color: var(--ink-4)">·</span> <span style="color: var(--signal-amber)">71% in src/lib/analysis/*</span></div>
+    <div class="file"><span class="path">src/lib/analysis/token-tracker.ts</span><span class="pct">42%</span></div>
+    <div class="file"><span class="path">src/lib/analysis/compaction.ts</span><span class="pct">19%</span></div>
+    <div class="file"><span class="path">src/lib/analysis/index.ts</span><span class="pct">10%</span></div>
+    <div class="file"><span class="path">src/types.ts</span><span class="pct">7%</span></div>
+    <div class="file"><span class="path">tests/loader.spec.ts</span><span class="pct">5%</span></div>
+  </div>
+  <div class="div-spine">
+    <b>≠</b>
+    <span>DIVERGENCE</span>
+    <span style="color: var(--signal-amber)">88%</span>
+    <span>NON-OVERLAP</span>
+  </div>
+  <div class="div-cell r">
+    <div class="h">B · TOP FILES <span style="color: var(--ink-4)">·</span> <span style="color: var(--signal-cyan)">88% in components/charts/*</span></div>
+    <div class="file"><span class="path">src/lib/components/charts/Stratigraphy.svelte</span><span class="pct">51%</span></div>
+    <div class="file"><span class="path">src/lib/components/charts/Sparkline.svelte</span><span class="pct">22%</span></div>
+    <div class="file"><span class="path">src/lib/components/charts/index.ts</span><span class="pct">8%</span></div>
+    <div class="file"><span class="path">src/types.ts</span><span class="pct">6%</span></div>
+    <div class="file"><span class="path">src/app.css</span><span class="pct">4%</span></div>
+  </div>
+</div>
+
+<!-- SHARED -->
+<div class="shared-row">
+  <div class="shared-cell">
+    <span class="label">SHARED FILES</span>
+    <code>src/types.ts</code>
+    <code>src/app.css</code>
+  </div>
+  <div class="shared-cell">
+    <span class="label">VERDICT</span>
+    <span style="color: var(--signal-green);">B IS 33% CHEAPER PER TURN</span>
+    <span style="color: var(--ink-4)">·</span>
+    <span style="color: var(--ink-2)">A FAILED 2 TESTS · INVESTIGATE</span>
+  </div>
+</div>
+
+<div class="foot">FACIES · COMPARE 7A1C4F92 ↔ A2E7F9C1 · APR 28 2026</div>
+
+<script>
+// Render simple stacked-area stratigraphy with a compaction notch
+function buildSeries(opts) {
+  // opts: { steps, peakTokens, compactionAt }
+  const out = [];
+  for (let i = 0; i < opts.steps; i++) {
+    let t = (i / opts.steps) * opts.peakTokens;
+    // hump
+    t = t + Math.sin(i * 0.4) * opts.peakTokens * 0.04;
+    if (opts.compactionAt && i >= opts.compactionAt) {
+      const since = i - opts.compactionAt;
+      // crash, then climb again
+      t = (i < opts.compactionAt + 1)
+        ? opts.peakTokens * 0.22
+        : opts.peakTokens * 0.22 + since * (opts.peakTokens / opts.steps);
+    }
+    out.push(Math.max(t, opts.peakTokens * 0.05));
+  }
+  return out;
+}
+
+function renderStrat(svgId, opts) {
+  const svg = document.getElementById(svgId);
+  const W = 600, H = 110;
+  const series = buildSeries(opts);
+  const max = opts.peakTokens * 1.05;
+
+  // background bands every 25%
+  const bands = [];
+  for (let g = 1; g < 4; g++) {
+    const y = (H * g / 4).toFixed(1);
+    bands.push(`<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-width="0.5"/>`);
+  }
+
+  // 200k context limit line
+  const limitY = H * (1 - 200000 / Math.max(max, 200001));
+  const limitLine = (limitY > 0 && limitY < H)
+    ? `<line x1="0" x2="${W}" y1="${limitY.toFixed(1)}" y2="${limitY.toFixed(1)}" stroke="var(--signal-red)" stroke-dasharray="3,3" stroke-width="0.8" opacity="0.7"/>`
+    : '';
+
+  // area path
+  const dx = W / (series.length - 1);
+  let path = '';
+  series.forEach((v, i) => {
+    const x = (i * dx).toFixed(1);
+    const y = (H - (v / max) * H).toFixed(1);
+    path += (i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`);
+  });
+  const filled = path + ` L ${W} ${H} L 0 ${H} Z`;
+
+  // compaction marker
+  let comp = '';
+  if (opts.compactionAt != null) {
+    const cx = (opts.compactionAt * dx).toFixed(1);
+    comp = `
+      <line x1="${cx}" x2="${cx}" y1="0" y2="${H}" stroke="var(--signal-amber)" stroke-width="1" stroke-dasharray="2,2" opacity="0.7"/>
+      <text x="${cx}" y="12" fill="var(--signal-amber)" font-family="var(--font-mono)" font-size="9" text-anchor="middle">⚡</text>
+    `;
+  }
+
+  svg.innerHTML = `
+    ${bands.join('')}
+    ${limitLine}
+    <path d="${filled}" fill="var(--signal-amber)" opacity="0.18"/>
+    <path d="${path}" fill="none" stroke="var(--signal-amber)" stroke-width="1.4"/>
+    ${comp}
+  `;
+}
+
+renderStrat('stratA', { steps: 47, peakTokens: 1_820_000, compactionAt: 22 });
+renderStrat('stratB', { steps: 31, peakTokens: 1_210_000 });
+
+// Swap interaction (visual only)
+document.querySelector('.swap').addEventListener('click', () => {
+  const head = document.querySelector('.header-row');
+  const cards = head.querySelectorAll('.session-card');
+  const lInner = cards[0].innerHTML;
+  cards[0].innerHTML = cards[1].innerHTML;
+  cards[1].innerHTML = lInner;
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 's' || e.key === 'S') document.querySelector('.swap').click();
+});
+</script>
+</body>
+</html>

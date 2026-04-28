@@ -1,0 +1,24 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Inputs</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .lab { font-family: var(--font-mono); font-size: 10px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .06em; margin: 0 0 6px; }
+  .blk { margin-bottom: 12px; }
+  .input { width: 100%; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--input); background: var(--background); color: var(--foreground); font: 400 14px var(--font-mono); outline: none; }
+  .input:focus { box-shadow: 0 0 0 2px var(--ring); }
+  .input.err { border-color: #ef4444; }
+  .err-line { height: 2px; background: #ef4444; width: 60px; margin-left: 130px; margin-top: -2px; }
+  .err-msg { display: inline-block; margin-top: 6px; padding: 4px 10px; font-size: 11px; color: #fca5a5; background: rgb(239 68 68 / 0.10); border: 1px solid rgb(239 68 68 / 0.50); border-radius: 6px; }
+  .sel { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--input); background: var(--background); color: var(--foreground); font-size: 14px; }
+</style></head><body><div class="card">
+  <div class="blk">
+    <div class="lab">query input — error state</div>
+    <input class="input err" value='total_tokens >= banana AND project = "ds"'>
+    <div class="err-line"></div>
+    <div class="err-msg">expected number, got identifier 'banana'</div>
+  </div>
+  <div class="blk">
+    <div class="lab">select</div>
+    <select class="sel"><option>No grouping</option><option>Group by Project</option><option>Group by Model</option></select>
+  </div>
+</div></body></html>

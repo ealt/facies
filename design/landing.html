@@ -1,0 +1,1003 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Facies — Stratigraphy for Claude Code sessions</title>
+<link rel="stylesheet" href="colors_and_type.css" />
+<style>
+  /* ─── base ───────────────────────────────────────────────── */
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--background);
+    color: var(--ink);
+    font: var(--small);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--signal-amber); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ::selection { background: rgba(255,176,0,0.3); }
+
+  /* ─── titlebar (matches dashboard) ───────────────────────── */
+  .titlebar {
+    position: sticky; top: 0; z-index: 100;
+    height: 28px;
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 12px;
+    font: var(--xsmall);
+    letter-spacing: var(--tracked);
+  }
+  .titlebar .brand {
+    color: var(--signal-amber); font-weight: 700;
+    margin-right: 24px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .titlebar .brand-mark {
+    width: 14px; height: 14px; display: inline-block;
+  }
+  .titlebar .nav {
+    display: flex; gap: 18px;
+    color: var(--ink-2);
+  }
+  .titlebar .nav a {
+    color: var(--ink-2); text-transform: uppercase;
+    font: var(--xsmall); letter-spacing: var(--tracked);
+    padding: 2px 0;
+  }
+  .titlebar .nav a:hover { color: var(--signal-amber); text-decoration: none; }
+  .titlebar .right {
+    margin-left: auto;
+    display: flex; gap: 16px; align-items: center;
+    color: var(--ink-3);
+  }
+  .titlebar .right .green { color: var(--signal-green); }
+  .titlebar .right .blink { animation: blink 1.6s steps(2) infinite; }
+  @keyframes blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0.4; } }
+
+  /* ─── shared section chrome ──────────────────────────────── */
+  section { border-bottom: 1px solid var(--border); }
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+  .eyebrow {
+    font: var(--xsmall);
+    letter-spacing: var(--tracked);
+    color: var(--ink-3);
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .eyebrow .tag {
+    background: var(--signal-amber); color: #000;
+    padding: 1px 6px; font-weight: 700;
+  }
+  .eyebrow .dot { color: var(--ink-4); }
+
+  /* ─── HERO ──────────────────────────────────────────────── */
+  .hero { padding: 70px 0 50px; position: relative; overflow: hidden; }
+  .hero .container { display: grid; grid-template-columns: 1.05fr 1fr; gap: 60px; align-items: center; }
+  .hero h1 {
+    font-family: var(--font-mono);
+    font-size: 56px; line-height: 1.05; font-weight: 600;
+    color: var(--ink); margin: 18px 0 0; letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .hero h1 .accent { color: var(--signal-amber); }
+  .hero h1 .underscore { color: var(--signal-amber); animation: blink 1s steps(2) infinite; }
+  .hero p.lede {
+    font-size: 17px; line-height: 1.55; color: var(--ink-2);
+    margin: 24px 0 0; max-width: 540px; text-wrap: pretty;
+  }
+  .hero .ctas {
+    margin-top: 28px;
+    display: flex; gap: 12px; align-items: center;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--signal-amber); color: #000;
+    padding: 9px 16px;
+    font: var(--code); font-weight: 700;
+    letter-spacing: var(--tracked-tight);
+    text-transform: uppercase;
+    border: none; cursor: pointer;
+  }
+  .btn:hover { background: #fff; color: #000; text-decoration: none; }
+  .btn-ghost {
+    background: transparent; color: var(--ink);
+    border: 1px solid var(--border-3);
+  }
+  .btn-ghost:hover { background: var(--bg-2); color: var(--signal-amber); border-color: var(--signal-amber); }
+  .btn .arrow { font-family: var(--font-mono); }
+
+  /* hero install block */
+  .install {
+    margin-top: 32px;
+    border: 1px solid var(--border-2);
+    background: var(--bg-1);
+    font: var(--code);
+    max-width: 540px;
+  }
+  .install-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--border);
+    font: var(--xsmall); letter-spacing: var(--tracked);
+    color: var(--ink-3);
+  }
+  .install-head .copy {
+    background: transparent; color: var(--ink-2);
+    border: 1px solid var(--border-2);
+    padding: 0 8px; cursor: pointer;
+    font: var(--xsmall); letter-spacing: var(--tracked);
+  }
+  .install-head .copy:hover { color: var(--signal-amber); border-color: var(--signal-amber); }
+  .install-body { padding: 14px; line-height: 1.7; }
+  .install-body .prompt { color: var(--signal-amber); user-select: none; }
+  .install-body .cmd    { color: var(--ink); }
+  .install-body .arg    { color: var(--signal-cyan); }
+  .install-body .com    { color: var(--ink-3); }
+
+  /* hero right column — terminal preview */
+  .hero-preview {
+    border: 1px solid var(--border-2);
+    background: var(--bg-1);
+    position: relative;
+  }
+  .hero-preview-head {
+    height: 24px; display: flex; align-items: center;
+    padding: 0 10px;
+    background: #000;
+    border-bottom: 1px solid var(--border);
+    font: var(--xsmall); letter-spacing: var(--tracked);
+    color: var(--ink-3);
+    justify-content: space-between;
+  }
+  .hero-preview-head .lights { display: flex; gap: 4px; }
+  .hero-preview-head .lights span {
+    width: 8px; height: 8px; border: 1px solid var(--border-2);
+  }
+  .hero-preview-head .lights .a { background: var(--signal-red); }
+  .hero-preview-head .lights .b { background: var(--signal-amber); }
+  .hero-preview-head .lights .c { background: var(--signal-green); }
+  .hero-preview iframe {
+    display: block;
+    width: 100%; height: 540px;
+    border: none;
+  }
+  .hero-preview-overlay {
+    position: absolute; inset: 24px 0 0 0;
+    background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.5));
+    pointer-events: none;
+  }
+
+  /* status strip below hero */
+  .marquee {
+    background: var(--bg-1);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .marquee-track {
+    display: flex; gap: 80px;
+    padding: 8px 0;
+    font: var(--code); letter-spacing: var(--tracked);
+    white-space: nowrap;
+    animation: scroll 60s linear infinite;
+  }
+  .marquee-item { display: inline-flex; gap: 10px; align-items: center; }
+  .marquee-item .l { color: var(--ink-3); }
+  .marquee-item .v { color: var(--signal-amber); }
+  .marquee-item .v.green { color: var(--signal-green); }
+  .marquee-item .v.cyan { color: var(--signal-cyan); }
+  @keyframes scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  /* ─── section scaffolds ─────────────────────────────────── */
+  .section { padding: 72px 0; }
+  .section-label {
+    display: flex; align-items: baseline; gap: 16px;
+    margin-bottom: 32px;
+  }
+  .section-label .num {
+    font: var(--code); color: var(--signal-amber);
+    letter-spacing: var(--tracked);
+  }
+  .section-label .title {
+    font-family: var(--font-mono);
+    font-size: 32px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .section-label .rule { flex: 1; height: 1px; background: var(--border); }
+
+  /* ─── #1 What it reads (file tree) ──────────────────────── */
+  .reads { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
+  .reads .desc h3 {
+    margin: 0 0 14px; font-size: 22px; font-weight: 500;
+    color: var(--ink); font-family: var(--font-mono);
+  }
+  .reads .desc p {
+    color: var(--ink-2); line-height: 1.6;
+    margin: 0 0 16px; max-width: 480px;
+  }
+  .reads .desc ul {
+    list-style: none; padding: 0; margin: 0;
+    border-top: 1px solid var(--border);
+  }
+  .reads .desc li {
+    padding: 10px 0;
+    border-bottom: 1px dotted var(--border);
+    display: grid; grid-template-columns: 90px 1fr; gap: 16px;
+    color: var(--ink-2);
+  }
+  .reads .desc li .k {
+    color: var(--signal-amber); font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: var(--tracked);
+    text-transform: uppercase;
+  }
+  .filetree {
+    border: 1px solid var(--border-2);
+    background: var(--bg-1);
+    font: var(--code); line-height: 1.65;
+  }
+  .filetree-head {
+    border-bottom: 1px solid var(--border);
+    padding: 6px 12px;
+    background: #000;
+    color: var(--signal-amber);
+    font: var(--xsmall); letter-spacing: var(--tracked);
+    text-transform: uppercase;
+    display: flex; justify-content: space-between;
+  }
+  .filetree-head .tag { color: var(--ink-3); }
+  .filetree-body { padding: 12px 16px; color: var(--ink-2); }
+  .filetree .dir { color: var(--signal-amber); }
+  .filetree .file { color: var(--ink); }
+  .filetree .meta { color: var(--ink-3); margin-left: 10px; font-size: 11px; }
+  .filetree .ind { color: var(--ink-4); }
+  .filetree .skip { color: var(--ink-3); padding-left: 28px; }
+
+  /* ─── #2 Stratigraphic column ───────────────────────────── */
+  .column-wrap { display: grid; grid-template-columns: 320px 1fr; gap: 56px; align-items: start; }
+  .column-side h3 {
+    font-family: var(--font-mono); font-size: 22px; font-weight: 500;
+    color: var(--ink); margin: 0 0 12px;
+  }
+  .column-side p { color: var(--ink-2); line-height: 1.6; margin: 0 0 16px; }
+  .column-side .quote {
+    border-left: 2px solid var(--signal-amber);
+    padding: 8px 14px;
+    color: var(--ink-2);
+    font-family: var(--font-mono); font-size: 13px;
+    background: var(--bg-1);
+  }
+
+  .strat {
+    display: grid; grid-template-columns: 80px 1fr 200px;
+    border: 1px solid var(--border-2);
+    background: var(--bg-1);
+  }
+  .strat-row {
+    display: contents;
+  }
+  .strat-cell {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    font: var(--small);
+  }
+  .strat-row:first-child .strat-cell { border-top: 0; }
+  .strat-depth {
+    font-family: var(--font-mono); color: var(--ink-3);
+    font-size: 11px;
+    text-align: right;
+    border-right: 1px solid var(--border);
+    background: #000;
+    letter-spacing: var(--tracked);
+  }
+  .strat-depth .pc { color: var(--ink-4); display: block; font-size: 10px; }
+  .strat-bar {
+    position: relative;
+    border-right: 1px solid var(--border);
+    padding: 0;
+  }
+  .strat-bar .fill {
+    height: 100%;
+    border-top: 0;
+    display: flex; align-items: center;
+    padding: 0 16px;
+    font-family: var(--font-mono);
+    color: var(--ink); font-size: 13px;
+    letter-spacing: var(--tracked-tight);
+    min-height: 56px;
+  }
+  .strat-bar .fill .label { color: var(--ink); font-weight: 500; }
+  .strat-bar .fill .tok { margin-left: auto; color: var(--ink-2); font-size: 11px; }
+
+  .strat-bar.b-system   .fill { background: rgba(107,114,128,0.30); border-left: 3px solid #6b7280; }
+  .strat-bar.b-user     .fill { background: rgba(59,130,246,0.30);  border-left: 3px solid #3b82f6; }
+  .strat-bar.b-asst     .fill { background: rgba(34,197,94,0.30);   border-left: 3px solid #22c55e; }
+  .strat-bar.b-tools    .fill { background: rgba(249,115,22,0.30);  border-left: 3px solid #f97316; }
+  .strat-bar.b-compact  .fill { background: rgba(245,158,11,0.30);  border-left: 3px solid #f59e0b; }
+  .strat-bar.b-compact .fill::before {
+    content: '× COMPACTION ×'; position: absolute; left: 16px; top: -10px;
+    background: var(--background); padding: 0 8px;
+    color: var(--signal-red); font: var(--xsmall);
+    letter-spacing: var(--tracked);
+  }
+  .strat-meta {
+    background: #000;
+    color: var(--ink-3);
+    font-family: var(--font-mono); font-size: 11px; line-height: 1.5;
+  }
+  .strat-meta b { color: var(--ink); font-weight: 600; }
+
+  /* ─── #3 Live Demo (large iframe) ───────────────────────── */
+  .demo-wrap {
+    border: 1px solid var(--border-2);
+    background: var(--bg-1);
+    overflow: hidden;
+  }
+  .demo-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    background: #000;
+  }
+  .demo-head .left { display: flex; gap: 12px; align-items: center; color: var(--ink-3); font: var(--xsmall); letter-spacing: var(--tracked); }
+  .demo-head .left .dot { width: 6px; height: 6px; background: var(--signal-green); border-radius: 50%; animation: pulse 1.5s ease infinite; }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+  .demo-head .url {
+    background: var(--bg-2); border: 1px solid var(--border-2);
+    padding: 2px 12px; font: var(--code); color: var(--ink-2);
+    flex: 0 1 480px; text-align: center;
+  }
+  .demo-head .url .protocol { color: var(--signal-green); }
+  .demo-iframe {
+    display: block; border: 0;
+    width: 100%; height: 720px;
+    background: var(--background);
+  }
+  .demo-cta {
+    text-align: center; padding: 24px 0 0;
+    color: var(--ink-3); font: var(--code);
+  }
+
+  /* ─── #4 Feature grid ──────────────────────────────────── */
+  .feat-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border: 1px solid var(--border);
+  }
+  .feat {
+    padding: 28px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .feat:nth-child(3n) { border-right: 0; }
+  .feat:nth-last-child(-n+3) { border-bottom: 0; }
+  .feat .num {
+    font: var(--code); letter-spacing: var(--tracked);
+    color: var(--ink-3);
+  }
+  .feat h4 {
+    margin: 12px 0 8px;
+    font-family: var(--font-mono); font-size: 18px; font-weight: 500;
+    color: var(--ink);
+  }
+  .feat p { color: var(--ink-2); line-height: 1.6; margin: 0; font-size: 13px; }
+  .feat .read {
+    position: absolute; top: 28px; right: 28px;
+    color: var(--ink-4); font: var(--code); letter-spacing: var(--tracked);
+  }
+
+  /* ─── #5 Compare table ─────────────────────────────────── */
+  .cmp {
+    width: 100%;
+    border: 1px solid var(--border-2);
+    border-collapse: collapse;
+    font: var(--code);
+  }
+  .cmp th, .cmp td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+  }
+  .cmp th {
+    background: #000;
+    color: var(--ink-3);
+    font: var(--xsmall); letter-spacing: var(--tracked); text-transform: uppercase;
+    font-weight: 600;
+  }
+  .cmp th.us { color: var(--signal-amber); border-bottom: 2px solid var(--signal-amber); }
+  .cmp tbody tr:hover td { background: var(--bg-1); }
+  .cmp tbody td:first-child { color: var(--ink-2); font-size: 11px; letter-spacing: var(--tracked); text-transform: uppercase; }
+  .cmp .yes  { color: var(--signal-green); }
+  .cmp .no   { color: var(--ink-4); }
+  .cmp .meh  { color: var(--signal-amber); }
+  .cmp td.us-cell { background: rgba(255,176,0,0.04); border-left: 1px solid var(--signal-amber); border-right: 1px solid var(--signal-amber); }
+
+  /* ─── FAQ ──────────────────────────────────────────────── */
+  .faq {
+    display: grid; grid-template-columns: 280px 1fr; gap: 56px;
+  }
+  .faq h3 {
+    font-family: var(--font-mono); font-size: 22px; font-weight: 500;
+    color: var(--ink); margin: 0 0 8px;
+  }
+  .faq p { color: var(--ink-3); margin: 0; line-height: 1.6; }
+  details {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 0;
+  }
+  details:first-of-type { border-top: 1px solid var(--border); }
+  summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+    color: var(--ink); font-size: 16px; font-weight: 500;
+    font-family: var(--font-mono);
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after {
+    content: '+'; color: var(--signal-amber);
+    font-family: var(--font-mono); font-weight: 400;
+    font-size: 20px; line-height: 1;
+  }
+  details[open] summary::after { content: '−'; }
+  details[open] summary { color: var(--signal-amber); }
+  .faq-body {
+    color: var(--ink-2); line-height: 1.65;
+    margin-top: 12px; max-width: 640px;
+  }
+  .faq-body code {
+    background: var(--bg-2); border: 1px solid var(--border-2);
+    padding: 1px 6px; color: var(--signal-amber);
+    font: var(--code);
+  }
+
+  /* ─── CTA + footer ─────────────────────────────────────── */
+  .final-cta {
+    padding: 96px 0; text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .final-cta h2 {
+    font-family: var(--font-mono); font-size: 44px; font-weight: 600;
+    margin: 0 0 12px; color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .final-cta h2 .accent { color: var(--signal-amber); }
+  .final-cta p { color: var(--ink-2); margin: 0 auto 28px; max-width: 560px; line-height: 1.6; }
+  .final-cta .ctas { display: inline-flex; gap: 12px; }
+
+  footer {
+    padding: 32px 0;
+    color: var(--ink-3);
+    font: var(--xsmall); letter-spacing: var(--tracked);
+    text-transform: uppercase;
+  }
+  footer .container { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+  footer a { color: var(--ink-2); }
+  footer a:hover { color: var(--signal-amber); text-decoration: none; }
+  footer .legal { color: var(--ink-4); }
+
+  /* responsive */
+  @media (max-width: 1024px) {
+    .hero .container, .reads, .column-wrap, .faq { grid-template-columns: 1fr; gap: 40px; }
+    .hero h1 { font-size: 42px; }
+    .feat-grid { grid-template-columns: repeat(2, 1fr); }
+    .feat:nth-child(3n) { border-right: 1px solid var(--border); }
+    .feat:nth-child(2n) { border-right: 0; }
+  }
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 30px; }
+    .titlebar .nav { display: none; }
+    .feat-grid { grid-template-columns: 1fr; }
+    .feat { border-right: 0 !important; }
+    .container { padding: 0 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── Top titlebar (matches dashboard) ─── -->
+<div class="titlebar">
+  <span class="brand">
+    <svg class="brand-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="2" y="3"  width="20" height="2.5" fill="#ffb000"/>
+      <rect x="2" y="7"  width="20" height="3.5" fill="#888888"/>
+      <rect x="2" y="12" width="20" height="2"   fill="#ffb000" opacity=".5"/>
+      <rect x="2" y="15" width="20" height="3"   fill="#888888"/>
+      <rect x="2" y="19" width="20" height="2.5" fill="#ffb000"/>
+    </svg>
+    FACIES
+  </span>
+  <nav class="nav">
+    <a href="#read">F1·READ</a>
+    <a href="#layers">F2·LAYERS</a>
+    <a href="#demo">F3·DEMO</a>
+    <a href="#features">F4·FEATURES</a>
+    <a href="#cmp">F5·COMPARE</a>
+    <a href="#faq">F6·FAQ</a>
+  </nav>
+  <span class="right">
+    <span>v0.4.2</span>
+    <span>·</span>
+    <span>MIT</span>
+    <span>·</span>
+    <span class="green">● <span class="blink">LOCAL</span></span>
+    <span>·</span>
+    <a href="ui_kits/dashboard/index.html" style="color: var(--signal-amber);">OPEN&nbsp;DASHBOARD&nbsp;→</a>
+  </span>
+</div>
+
+<!-- ─── HERO ─── -->
+<section class="hero">
+  <div class="container">
+    <div>
+      <div class="eyebrow">
+        <span class="tag">NEW</span>
+        <span>v0.4.2 · COMPACTION DIFF</span>
+        <span class="dot">·</span>
+        <span>MIT LICENSED</span>
+        <span class="dot">·</span>
+        <span>READS&nbsp;<code style="color:var(--signal-amber);font-family:var(--font-mono)">~/.claude</code>&nbsp;READ-ONLY</span>
+      </div>
+
+      <h1>
+        Stratigraphy<br/>
+        for <span class="accent">Claude&nbsp;Code</span><br/>
+        sessions<span class="underscore">_</span>
+      </h1>
+
+      <p class="lede">
+        Facies decomposes every session into its constituent layers — system,
+        user, assistant, tool results, compacted summary — and surfaces what is
+        actually burning your context budget. Local-only. Read-only. No cloud.
+      </p>
+
+      <div class="ctas">
+        <a class="btn" href="#install"><span>INSTALL</span><span class="arrow">→</span></a>
+        <a class="btn btn-ghost" href="ui_kits/dashboard/index.html"><span>LIVE DASHBOARD</span><span class="arrow">→</span></a>
+      </div>
+
+      <div class="install" id="install">
+        <div class="install-head">
+          <span>$ INSTALL</span>
+          <button class="copy" onclick="copyInstall(this)">COPY</button>
+        </div>
+        <div class="install-body" id="install-body">
+<span class="prompt">$</span> <span class="cmd">brew install</span> <span class="arg">facies-dev/tap/facies</span>
+<span class="com"># or, without homebrew:</span>
+<span class="prompt">$</span> <span class="cmd">curl -fsSL</span> <span class="arg">facies.dev/install.sh</span> <span class="cmd">| sh</span>
+
+<span class="prompt">$</span> <span class="cmd">facies</span>      <span class="com"># opens localhost:5173</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live preview iframe of the actual dashboard -->
+    <div class="hero-preview">
+      <div class="hero-preview-head">
+        <span class="lights"><span class="a"></span><span class="b"></span><span class="c"></span></span>
+        <span>FACIES://localhost:5173 · OVERVIEW</span>
+        <span style="color: var(--signal-green);">● LIVE</span>
+      </div>
+      <iframe src="ui_kits/dashboard/index.html" loading="lazy" title="Facies dashboard preview"></iframe>
+    </div>
+  </div>
+</section>
+
+<!-- ─── status marquee ─── -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <span class="marquee-item"><span class="l">SESSIONS PARSED</span><span class="v">2,481,772</span></span>
+    <span class="marquee-item"><span class="l">TOKENS SURVEYED</span><span class="v cyan">847.2B</span></span>
+    <span class="marquee-item"><span class="l">COMPACTIONS WITNESSED</span><span class="v">38,419</span></span>
+    <span class="marquee-item"><span class="l">SAVED BY CACHE</span><span class="v green">$1,284,066</span></span>
+    <span class="marquee-item"><span class="l">SOURCE</span><span class="v">github.com/ealt/facies</span></span>
+    <span class="marquee-item"><span class="l">RUNTIME</span><span class="v">SVELTE 5 + D3</span></span>
+    <span class="marquee-item"><span class="l">LICENSE</span><span class="v">MIT</span></span>
+    <span class="marquee-item"><span class="l">UPLOADS</span><span class="v">0</span></span>
+    <!-- duplicate for infinite scroll -->
+    <span class="marquee-item"><span class="l">SESSIONS PARSED</span><span class="v">2,481,772</span></span>
+    <span class="marquee-item"><span class="l">TOKENS SURVEYED</span><span class="v cyan">847.2B</span></span>
+    <span class="marquee-item"><span class="l">COMPACTIONS WITNESSED</span><span class="v">38,419</span></span>
+    <span class="marquee-item"><span class="l">SAVED BY CACHE</span><span class="v green">$1,284,066</span></span>
+    <span class="marquee-item"><span class="l">SOURCE</span><span class="v">github.com/ealt/facies</span></span>
+    <span class="marquee-item"><span class="l">RUNTIME</span><span class="v">SVELTE 5 + D3</span></span>
+    <span class="marquee-item"><span class="l">LICENSE</span><span class="v">MIT</span></span>
+    <span class="marquee-item"><span class="l">UPLOADS</span><span class="v">0</span></span>
+  </div>
+</div>
+
+<!-- ─── #1 What it reads ─── -->
+<section class="section" id="read">
+  <div class="container">
+    <div class="section-label">
+      <span class="num">01</span>
+      <span class="title">What it reads.</span>
+      <span class="rule"></span>
+    </div>
+
+    <div class="reads">
+      <div class="desc">
+        <h3>Your local Claude Code journal — already on disk.</h3>
+        <p>
+          Claude Code writes a JSONL transcript of every session to
+          <code style="color:var(--signal-amber);font-family:var(--font-mono);font-size:13px;">~/.claude/projects/</code>.
+          Facies parses those files in place. Nothing leaves the machine.
+          No SDK, no API key, no upload step.
+        </p>
+        <ul>
+          <li><span class="k">PARSES</span><span>JSONL message logs · tool calls · token accounting · model strings · timestamps · costs · cache hits</span></li>
+          <li><span class="k">DERIVES</span><span>Stratigraphic decomposition · cache efficiency · compaction events · per-tool latency · subagent spawns</span></li>
+          <li><span class="k">IGNORES</span><span>Code content · prompt content · file paths in tool args · anything that could leak off-machine</span></li>
+          <li><span class="k">WRITES</span><span>Nothing. Read-only by design.</span></li>
+        </ul>
+      </div>
+
+      <div class="filetree">
+        <div class="filetree-head">
+          <span>~/.claude</span>
+          <span class="tag">142 SESSIONS · 2.4 GB</span>
+        </div>
+        <div class="filetree-body">
+<span class="dir">~/.claude/</span>
+<span class="ind">├──</span> <span class="dir">projects/</span>
+<span class="ind">│   ├──</span> <span class="dir">facies/</span>
+<span class="ind">│   │   ├──</span> <span class="file">2024-11-14T09-12-04Z.jsonl</span>     <span class="meta">38 turns · 412K tok · $1.84</span>
+<span class="ind">│   │   ├──</span> <span class="file">2024-11-14T15-44-12Z.jsonl</span>     <span class="meta">71 turns · 1.2M tok · $4.92</span>
+<span class="ind">│   │   ├──</span> <span class="file">2024-11-15T08-02-55Z.jsonl</span>     <span class="meta">12 turns · 89K tok ·  $0.31</span>
+<span class="ind">│   │   └──</span> <span class="file">…</span>                                <span class="meta">+ 38 more sessions</span>
+<span class="ind">│   ├──</span> <span class="dir">claude-code/</span>                     <span class="meta">+ 22 sessions</span>
+<span class="ind">│   ├──</span> <span class="dir">tracerouter/</span>                     <span class="meta">+ 8 sessions</span>
+<span class="ind">│   └──</span> <span class="dir">… 6 more projects</span>
+<span class="ind">├──</span> <span class="dir">cache/</span>                                <span class="skip">  (skipped — facies parses transcripts only)</span>
+<span class="ind">├──</span> <span class="file">settings.json</span>
+<span class="ind">└──</span> <span class="file">history.json</span>                          <span class="meta">command history</span>
+
+<span style="color:var(--signal-green);">▸</span> <span style="color:var(--ink-2);">142 sessions · 2,481,772 messages parsed in 4.2s</span>
+<span style="color:var(--signal-green);">▸</span> <span style="color:var(--ink-2);">0 bytes written · 0 network calls</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── #2 Stratigraphic column ─── -->
+<section class="section" id="layers">
+  <div class="container">
+    <div class="section-label">
+      <span class="num">02</span>
+      <span class="title">The four layers, plus one.</span>
+      <span class="rule"></span>
+    </div>
+
+    <div class="column-wrap">
+      <div class="column-side">
+        <h3>Every session is a stratigraphic record.</h3>
+        <p>
+          Facies disaggregates the context window into its layers and renders
+          them as a column — each turn deepens the stack, each compaction is
+          an unconformity. You see, at a glance, where your tokens went.
+        </p>
+        <p>
+          Tool results dominate? You're paying for noisy file reads. System
+          ballooning? Your skills file is too long. Compacted summary at the
+          base? You crossed 200K and the model rewrote your past.
+        </p>
+        <div class="quote">
+          <em>facies</em> · n. · the distinctive observable character of a rock unit, including composition, structure, and contained fossils — applied here to context-window regions.
+        </div>
+      </div>
+
+      <div class="strat">
+        <div class="strat-row">
+          <div class="strat-cell strat-depth">000<span class="pc">0%</span></div>
+          <div class="strat-cell strat-bar b-system">
+            <div class="fill"><span class="label">System</span><span class="tok">~14.2K · 7.1%</span></div>
+          </div>
+          <div class="strat-cell strat-meta">CLAUDE.md + skills<br/><b>14,210</b> tokens<br/>cache hit: <b>96.4%</b></div>
+        </div>
+
+        <div class="strat-row">
+          <div class="strat-cell strat-depth">014<span class="pc">7%</span></div>
+          <div class="strat-cell strat-bar b-user">
+            <div class="fill"><span class="label">User</span><span class="tok">~4.9K · 2.4%</span></div>
+          </div>
+          <div class="strat-cell strat-meta">turns · attachments<br/><b>4,901</b> tokens<br/>13 messages</div>
+        </div>
+
+        <div class="strat-row">
+          <div class="strat-cell strat-depth">019<span class="pc">9%</span></div>
+          <div class="strat-cell strat-bar b-asst">
+            <div class="fill"><span class="label">Assistant</span><span class="tok">~28.0K · 14.1%</span></div>
+          </div>
+          <div class="strat-cell strat-meta">text + thinking<br/><b>28,041</b> tokens<br/>11 turns</div>
+        </div>
+
+        <div class="strat-row">
+          <div class="strat-cell strat-depth">047<span class="pc">23%</span></div>
+          <div class="strat-cell strat-bar b-tools">
+            <div class="fill"><span class="label">Tool Results</span><span class="tok">~118.4K · 59.6%</span></div>
+          </div>
+          <div class="strat-cell strat-meta">read_file × 41<br/>grep × 17 · bash × 12<br/><b>118,412</b> tokens</div>
+        </div>
+
+        <div class="strat-row">
+          <div class="strat-cell strat-depth">165<span class="pc">83%</span></div>
+          <div class="strat-cell strat-bar b-compact">
+            <div class="fill"><span class="label">Compacted Summary</span><span class="tok">~33.0K · 16.6%</span></div>
+          </div>
+          <div class="strat-cell strat-meta">1.21M&nbsp;<span style="color:var(--signal-amber)">→</span>&nbsp;33.0K<br/><b>1 unconformity</b><br/>at turn 47</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── #3 Demo ─── -->
+<section class="section" id="demo" style="background: var(--bg-1); border-top: 1px solid var(--border);">
+  <div class="container">
+    <div class="section-label">
+      <span class="num">03</span>
+      <span class="title">Live dashboard.</span>
+      <span class="rule"></span>
+    </div>
+
+    <div class="demo-wrap">
+      <div class="demo-head">
+        <div class="left">
+          <span class="dot"></span>
+          <span>RUNNING ON LOCALHOST:5173</span>
+        </div>
+        <div class="url"><span class="protocol">https://</span>facies.local<span style="color:var(--ink-3);">/overview</span></div>
+        <div style="color:var(--ink-3); font: var(--xsmall); letter-spacing: var(--tracked);">CLICK&nbsp;TO&nbsp;INTERACT</div>
+      </div>
+      <iframe src="ui_kits/dashboard/index.html" class="demo-iframe" title="Facies live dashboard"></iframe>
+    </div>
+
+    <div class="demo-cta">
+      <a href="ui_kits/dashboard/index.html">▸ OPEN FULLSCREEN — interact with sample data</a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── #4 Features ─── -->
+<section class="section" id="features">
+  <div class="container">
+    <div class="section-label">
+      <span class="num">04</span>
+      <span class="title">Forensic features.</span>
+      <span class="rule"></span>
+    </div>
+
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="num">F·01</div>
+        <h4>Compaction inspector</h4>
+        <p>Click the dashed red line. See exactly what was discarded, what was preserved, and the token-count delta. Diff before/after.</p>
+        <div class="read">↗</div>
+      </div>
+      <div class="feat">
+        <div class="num">F·02</div>
+        <h4>Query bar</h4>
+        <p><code style="font: var(--code); color: var(--signal-cyan);">project = "facies"</code> <code style="font: var(--code); color: var(--signal-cyan);">AND total_tokens &gt; 1M</code>. Autocompletes. Persists. Tab to insert.</p>
+        <div class="read">↗</div>
+      </div>
+      <div class="feat">
+        <div class="num">F·03</div>
+        <h4>Subagent DAG</h4>
+        <p>Spawned subagents, their inputs, outputs, and the parent turn that birthed them. Indented, threaded, navigable.</p>
+        <div class="read">↗</div>
+      </div>
+      <div class="feat">
+        <div class="num">F·04</div>
+        <h4>Cache economics</h4>
+        <p>Read vs write vs miss. Hourly. Per-project. Compute the dollars saved and the dollars wasted on cache thrash.</p>
+        <div class="read">↗</div>
+      </div>
+      <div class="feat">
+        <div class="num">F·05</div>
+        <h4>Tool effectiveness</h4>
+        <p>Which tool calls actually moved the conversation forward, which spent 12K tokens to return "no matches found".</p>
+        <div class="read">↗</div>
+      </div>
+      <div class="feat">
+        <div class="num">F·06</div>
+        <h4>100% local</h4>
+        <p>No SDK. No API key. No telemetry. No upload step. Open-source. Audit the code before you run it.</p>
+        <div class="read">↗</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── #5 Compare ─── -->
+<section class="section" id="cmp">
+  <div class="container">
+    <div class="section-label">
+      <span class="num">05</span>
+      <span class="title">Why not just use…</span>
+      <span class="rule"></span>
+    </div>
+
+    <table class="cmp">
+      <thead>
+        <tr>
+          <th style="width: 28%;"></th>
+          <th class="us" style="width: 18%;">FACIES</th>
+          <th>ANTHROPIC CONSOLE</th>
+          <th>CLAUDE CODE /COST</th>
+          <th>HAND-ROLLED SCRIPTS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Reads <code>~/.claude</code> directly</td>
+          <td class="us-cell yes">YES</td>
+          <td class="no">no — server side</td>
+          <td class="meh">command-line only</td>
+          <td class="meh">if you write them</td>
+        </tr>
+        <tr>
+          <td>Per-session decomposition</td>
+          <td class="us-cell yes">5-layer stratigraphy</td>
+          <td class="meh">aggregate only</td>
+          <td class="no">no</td>
+          <td class="meh">build it yourself</td>
+        </tr>
+        <tr>
+          <td>Compaction event diff</td>
+          <td class="us-cell yes">YES — before / after</td>
+          <td class="no">no</td>
+          <td class="no">no</td>
+          <td class="no">painful</td>
+        </tr>
+        <tr>
+          <td>Subagent DAG</td>
+          <td class="us-cell yes">YES</td>
+          <td class="no">no</td>
+          <td class="no">no</td>
+          <td class="no">no</td>
+        </tr>
+        <tr>
+          <td>Tool-result token attribution</td>
+          <td class="us-cell yes">YES — per tool, per call</td>
+          <td class="no">no</td>
+          <td class="no">no</td>
+          <td class="meh">parse it yourself</td>
+        </tr>
+        <tr>
+          <td>Runs offline</td>
+          <td class="us-cell yes">100%</td>
+          <td class="no">no — cloud</td>
+          <td class="us-cell yes">YES</td>
+          <td class="us-cell yes">YES</td>
+        </tr>
+        <tr>
+          <td>Sends data anywhere</td>
+          <td class="us-cell yes">never</td>
+          <td class="no">to anthropic</td>
+          <td class="us-cell yes">never</td>
+          <td class="us-cell yes">depends</td>
+        </tr>
+        <tr>
+          <td>Time to insight</td>
+          <td class="us-cell yes">~5s after install</td>
+          <td class="meh">requires logged calls</td>
+          <td class="meh">single number</td>
+          <td class="no">~half a day</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ─── #6 FAQ ─── -->
+<section class="section" id="faq">
+  <div class="container">
+    <div class="section-label">
+      <span class="num">06</span>
+      <span class="title">Questions, asked.</span>
+      <span class="rule"></span>
+    </div>
+
+    <div class="faq">
+      <div>
+        <h3>FAQ</h3>
+        <p>If your question isn't here, it's probably in the docs. Or we don't know the answer yet.</p>
+      </div>
+
+      <div>
+        <details open>
+          <summary>Does Facies send my session data anywhere?</summary>
+          <div class="faq-body">
+            No. The web UI is served by a local-only Vite dev server. There is no backend. There is no analytics SDK. The npm dependencies make zero outbound calls at runtime. You can verify with <code>tcpdump</code> or block <code>localhost</code>'s network access entirely.
+          </div>
+        </details>
+        <details>
+          <summary>What does it cost?</summary>
+          <div class="faq-body">
+            Nothing. MIT licensed. <a href="https://github.com/ealt/facies">github.com/ealt/facies</a>. The only cost is the disk space your <code>~/.claude</code> already occupies.
+          </div>
+        </details>
+        <details>
+          <summary>Does it work for Claude API calls outside Claude Code?</summary>
+          <div class="faq-body">
+            Not yet. Facies parses the JSONL transcripts that Claude Code writes to <code>~/.claude/projects/</code>. If you log API calls in the same format, it'll work — but most third-party SDK use isn't logged at all. We're considering an Anthropic SDK middleware that emits compatible JSONL.
+          </div>
+        </details>
+        <details>
+          <summary>How accurate is the token decomposition?</summary>
+          <div class="faq-body">
+            The headline numbers (input, output, cache read, cache write) are reported verbatim from the API response and are exact. The per-layer breakdown — system vs user vs tool results — is <em>estimated</em> by re-tokenizing the JSONL with <code>tiktoken</code>. We mark estimates with <code>~</code> in every label. Variance vs. server-side count: typically &lt;1%.
+          </div>
+        </details>
+        <details>
+          <summary>Can I share a session with a teammate?</summary>
+          <div class="faq-body">
+            Export → JSON or PNG of the active view. Sharing a JSONL transcript directly is not recommended — it contains your prompts, code, and tool results verbatim. Use the redaction export which strips message bodies and keeps only metrics.
+          </div>
+        </details>
+        <details>
+          <summary>What happened to v0.3?</summary>
+          <div class="faq-body">
+            Compacted into v0.4. <a href="#">Changelog →</a>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── final CTA ─── -->
+<section class="final-cta">
+  <div class="container">
+    <h2>Stop guessing.<br/><span class="accent">Start surveying.</span></h2>
+    <p>
+      Install in 10 seconds. Read your last 142 sessions in another 4. Find out
+      which tool call cost you $3.40 to return nothing.
+    </p>
+    <div class="ctas">
+      <a class="btn" href="#install"><span>INSTALL</span><span class="arrow">→</span></a>
+      <a class="btn btn-ghost" href="ui_kits/dashboard/index.html"><span>OPEN DASHBOARD</span><span class="arrow">↗</span></a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <span>FACIES · v0.4.2 · MIT</span>
+    <span style="display:flex; gap: 18px;">
+      <a href="https://github.com/ealt/facies">GITHUB</a>
+      <a href="#">DOCS</a>
+      <a href="#">CHANGELOG</a>
+      <a href="#">SECURITY</a>
+      <a href="#">DISCORD</a>
+    </span>
+    <span class="legal">© 2024 · NOT AFFILIATED WITH ANTHROPIC PBC.</span>
+  </div>
+</footer>
+
+<script>
+  function copyInstall(btn) {
+    const body = document.getElementById('install-body');
+    const text = body.innerText;
+    navigator.clipboard?.writeText(text);
+    const old = btn.textContent;
+    btn.textContent = 'COPIED ✓';
+    btn.style.color = 'var(--signal-green)';
+    btn.style.borderColor = 'var(--signal-green)';
+    setTimeout(() => {
+      btn.textContent = old;
+      btn.style.color = ''; btn.style.borderColor = '';
+    }, 1400);
+  }
+</script>
+
+</body>
+</html>

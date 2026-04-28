@@ -1,0 +1,17 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Type Scale</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .row { display: grid; grid-template-columns: 60px 1fr 100px; gap: 12px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .row:last-child { border-bottom: 0; }
+  .sz { font-family: var(--font-mono); font-size: 10px; color: var(--muted-foreground); }
+  .specimen { line-height: 1.2; }
+  .use { font-size: 11px; color: var(--muted-foreground); text-align: right; }
+</style></head><body><div class="card">
+  <div class="row"><div class="sz">18 / 600</div><div class="specimen" style="font-size:18px;font-weight:600;letter-spacing:-0.01em;">Facies</div><div class="use">wordmark, KPI</div></div>
+  <div class="row"><div class="sz">14 / 500</div><div class="specimen" style="font-size:14px;font-weight:500;">Token Economics</div><div class="use">card heading</div></div>
+  <div class="row"><div class="sz">14 / 400</div><div class="specimen" style="font-size:14px;">Models: claude-3-5-sonnet</div><div class="use">body</div></div>
+  <div class="row"><div class="sz">12 / 500</div><div class="specimen" style="font-size:12px;font-weight:500;">Cache Hit Rate</div><div class="use">tile label</div></div>
+  <div class="row"><div class="sz">12 / 400</div><div class="specimen" style="font-size:12px;color:var(--muted-foreground);">No sessions match the current filters.</div><div class="use">muted body</div></div>
+  <div class="row"><div class="sz">10 / 400</div><div class="specimen" style="font-size:10px;color:var(--muted-foreground);">~estimated breakdown · totals are exact</div><div class="use">legend / footnote</div></div>
+</div></body></html>

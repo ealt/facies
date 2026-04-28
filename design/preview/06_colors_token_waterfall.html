@@ -1,0 +1,23 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Token Waterfall Palette</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .stack { display: flex; height: 110px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .seg { display:flex; align-items:flex-end; padding: 6px 8px; font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,.9); flex-direction: column; justify-content: flex-end; }
+  .legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; font-size: 11px; }
+  .lc { display:flex; align-items:center; gap:6px; }
+  .ld { width: 10px; height: 10px; border-radius: 2px; }
+</style></head><body><div class="card">
+  <div class="stack">
+    <div class="seg" style="background:#3b82f6; flex: 1;">Output</div>
+    <div class="seg" style="background:#eab308; flex: .8;">Cache Create</div>
+    <div class="seg" style="background:#22c55e; flex: 3.2;">Cache Read</div>
+    <div class="seg" style="background:#ef4444; flex: 1.4;">Input</div>
+  </div>
+  <div class="legend">
+    <div class="lc"><span class="ld" style="background:#ef4444"></span>Input (uncached)</div>
+    <div class="lc"><span class="ld" style="background:#22c55e"></span>Cache Read</div>
+    <div class="lc"><span class="ld" style="background:#eab308"></span>Cache Create</div>
+    <div class="lc"><span class="ld" style="background:#3b82f6"></span>Output</div>
+  </div>
+</div></body></html>

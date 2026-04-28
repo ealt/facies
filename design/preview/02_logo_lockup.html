@@ -1,0 +1,20 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Logo Lockup</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .frame { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; display:flex; align-items:center; justify-content:center; min-height: 110px; }
+  .frame.light { background: oklch(1 0 0); }
+  .label { font: var(--xsmall); color: var(--muted-foreground); margin-top: 6px; font-family: var(--font-mono); }
+</style></head><body><div class="card">
+  <div class="stage">
+    <div>
+      <div class="frame"><img src="../assets/logo-lockup.svg" width="220" alt="lockup dark"></div>
+      <div class="label">on background — dark</div>
+    </div>
+    <div>
+      <div class="frame light"><img src="../assets/logo-mark.svg" width="80" alt="mark"></div>
+      <div class="label">mark only</div>
+    </div>
+  </div>
+</div></body></html>

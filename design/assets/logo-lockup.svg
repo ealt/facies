@@ -1,0 +1,10 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 24" width="160" height="24" role="img" aria-label="Facies">
+  <rect x="0" y="3" width="20" height="3" fill="#555555"></rect>
+  <rect x="0" y="7" width="20" height="2" fill="#5dd9e0"></rect>
+  <rect x="0" y="10" width="20" height="3" fill="#00d97e"></rect>
+  <rect x="0" y="14" width="20" height="2" fill="#ff8800"></rect>
+  <rect x="0" y="17" width="20" height="4" fill="#ffb000"></rect>
+  <rect x="9" y="2" width="1" height="20" fill="#000000"></rect>
+  <text x="30" y="17" font-family="&#39;IBM Plex Mono&#39;,&#39;JetBrains Mono&#39;,ui-monospace,monospace" font-weight="500" font-size="14" letter-spacing="1.4" fill="#e5e5e5">FACIES</text>
+</svg>

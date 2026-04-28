@@ -1,0 +1,159 @@
+/* ============================================================
+   Facies — Colors & Type · Bloomberg Terminal direction
+   ------------------------------------------------------------
+   Pure black canvas. Mono everywhere. Amber accent. No softness.
+   ============================================================ */
+
+:root,
+.dark {
+  /* Surfaces ------------------------------------------------- */
+  --background: #000000;
+  --bg-1:       #0a0a0a;   /* secondary panels */
+  --bg-2:       #121212;   /* hovered rows, input bg */
+  --bg-3:       #1a1a1a;   /* sidebar / sub-panel */
+  --foreground: #e5e5e5;
+  --card:       #000000;
+  --popover:    #0a0a0a;
+
+  /* Lines & rings ------------------------------------------- */
+  --border:     #1f1f1f;   /* dividers between panels */
+  --border-2:   #2a2a2a;   /* darker rules, inactive borders */
+  --border-3:   #3a3a3a;   /* hover/focus emphasis */
+  --input:      #2a2a2a;
+  --ring:       #ffb000;   /* amber focus ring */
+  --radius:     0;          /* sharp corners — terminal aesthetic */
+  --radius-sm:  0;
+  --radius-md:  2px;        /* tooltips/popovers only */
+
+  /* Roles --------------------------------------------------- */
+  --primary:              #ffb000;   /* amber */
+  --primary-foreground:   #000000;
+  --secondary:            #1a1a1a;
+  --secondary-foreground: #e5e5e5;
+  --muted:                #121212;
+  --muted-foreground:     #888888;   /* deemphasized labels */
+  --muted-foreground-2:   #555555;   /* axis ticks, footnotes */
+  --accent:               #ffb000;
+  --accent-foreground:    #000000;
+
+  /* Text scale --------------------------------------------- */
+  --ink:    #e5e5e5;        /* primary text */
+  --ink-2:  #888888;        /* labels, secondary */
+  --ink-3:  #555555;        /* tertiary, axis ticks */
+  --ink-4:  #333333;        /* deepest mute */
+
+  /* Signal palette — semantic, not decorative -------------- */
+  --signal-amber:   #ffb000;   /* primary accent · interactive */
+  --signal-amber-2: #ff8800;   /* tool results, warm secondary */
+  --signal-green:   #00d97e;   /* gains, savings, positive cost */
+  --signal-cyan:    #5dd9e0;   /* user, queries, pills */
+  --signal-red:     #ff4d4d;   /* errors, compaction lines */
+  --signal-purple:  #b377ff;   /* subagents, exotic */
+
+  /* Stratigraphy categories — flat, no transparency -------- */
+  --cat-system:             #555555;
+  --cat-user:               #5dd9e0;
+  --cat-assistant-text:     #00d97e;
+  --cat-assistant-thinking: #2a8060;
+  --cat-tool-results:       #ff8800;
+  --cat-subagent-overhead:  #b377ff;
+  --cat-compacted-summary:  #ffb000;
+
+  /* Token waterfall categories ----------------------------- */
+  --tok-fresh-input:  #ff4d4d;
+  --tok-cache-read:   #00d97e;
+  --tok-cache-create: #ffb000;
+  --tok-output:       #5dd9e0;
+
+  /* Project palette — high-saturation distinct hues -------- */
+  --proj-1:  #ffb000;
+  --proj-2:  #5dd9e0;
+  --proj-3:  #00d97e;
+  --proj-4:  #ff4d4d;
+  --proj-5:  #b377ff;
+  --proj-6:  #ff8800;
+  --proj-7:  #4da6ff;
+  --proj-8:  #ff7eb6;
+  --proj-9:  #c9a96a;
+  --proj-10: #aaaaaa;
+
+  /* Type ---------------------------------------------------- */
+  /* Mono dominates. Sans is reserved for prose-only surfaces
+     (long-form docs, marketing) — not used in the dashboard.   */
+  --font-mono:    'IBM Plex Mono', 'JetBrains Mono', ui-monospace,
+                  SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-display: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans:    'Inter Tight', -apple-system, BlinkMacSystemFont,
+                  'Segoe UI', system-ui, sans-serif;
+
+  /* Type scale — mono metrics ------------------------------ */
+  --text-9:    9px;     /* deepest axis labels */
+  --text-10:  10px;     /* status bar, function keys, footnotes */
+  --text-11:  11px;     /* table cells, dense UI */
+  --text-12:  12px;     /* panel headings, body */
+  --text-14:  14px;     /* large numerics, values */
+  --text-18:  18px;     /* hero metric */
+
+  /* Semantic type roles ------------------------------------ */
+  --display:    500 18px/1.2  var(--font-display);
+                                   /* hero metrics, big values  */
+  --h1:         500 14px/1.3  var(--font-mono);
+                                   /* section headings          */
+  --h2:         500 12px/1.3  var(--font-mono);
+                                   /* card / panel headings (uppercase + tracked) */
+  --h3:         500 10px/1.3  var(--font-mono);
+                                   /* tiny KPI labels (uppercase + tracked) */
+  --p:          400 12px/1.5  var(--font-mono);
+                                   /* body / table cells        */
+  --small:      400 11px/1.5  var(--font-mono);
+                                   /* dense rows                */
+  --xsmall:     400 10px/1.4  var(--font-mono);
+                                   /* legends, axis             */
+  --code:       500 11px/1.3  var(--font-mono);
+                                   /* IDs, model strings        */
+
+  /* Heading transforms — apply via class .h--label */
+  --tracked: 0.1em;
+  --tracked-tight: 0.06em;
+
+  /* Spacing rhythm ----------------------------------------- */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+
+  /* Heights ------------------------------------------------ */
+  --status-bar-h: 24px;     /* very thin top status bar */
+  --header-h:     32px;     /* title row */
+  --row-h:        24px;     /* dense table rows */
+  --row-h-tall:   28px;
+
+  /* Effects ------------------------------------------------ */
+  --shadow-popover: 0 4px 12px rgba(0,0,0,0.6);
+  --grid-line: 1px solid var(--border);
+  --grid-line-2: 1px solid var(--border-2);
+}
+
+/* Base ---------------------------------------------------- */
+* { border-color: var(--border); box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font: var(--p);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+/* Helpers ------------------------------------------------- */
+.h--label  { text-transform: uppercase; letter-spacing: var(--tracked); color: var(--signal-amber); font: var(--h3); }
+.h--panel  { text-transform: uppercase; letter-spacing: var(--tracked); color: var(--signal-amber); font: var(--h2); }
+.muted     { color: var(--ink-2); }
+.muted-2   { color: var(--ink-3); }
+.mono      { font-family: var(--font-mono); }
+.amber     { color: var(--signal-amber); }
+.green     { color: var(--signal-green); }
+.cyan      { color: var(--signal-cyan); }
+.red       { color: var(--signal-red); }

@@ -1,0 +1,29 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Table</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .wrap { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: rgba(255,255,255,.04); border-bottom: 1px solid var(--border); }
+  th { font-weight: 500; text-align: left; padding: 8px 12px; cursor: pointer; }
+  th.r { text-align: right; }
+  td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  td.r { text-align: right; font-family: var(--font-mono); font-size: 12px; }
+  tr:last-child td { border-bottom: 0; }
+  .title { color: var(--foreground); font-weight: 500; }
+  .muted { color: var(--muted-foreground); }
+  .mono { font-family: var(--font-mono); font-size: 11px; padding: 2px 6px; background: var(--muted); border-radius: 3px; }
+  .summary { background: rgba(255,255,255,.025); font-weight: 500; }
+</style></head><body><div class="card">
+  <div class="wrap">
+    <table>
+      <thead><tr><th>Title</th><th>Model</th><th>Started</th><th class="r">Tokens ▼</th><th class="r">Cost</th></tr></thead>
+      <tbody>
+        <tr class="summary"><td>—</td><td>—</td><td>—</td><td class="r">8.4M</td><td class="r">$12.43</td></tr>
+        <tr><td class="title">refactor session-loader</td><td><span class="mono">claude-3-5-sonnet</span></td><td class="muted">12m ago</td><td class="r">4.2M</td><td class="r">$6.21</td></tr>
+        <tr><td class="title">add compaction analyzer</td><td><span class="mono">claude-3-5-sonnet</span></td><td class="muted">2h ago</td><td class="r">2.8M</td><td class="r">$4.04</td></tr>
+        <tr><td class="title">fix cache rate calc</td><td><span class="mono">claude-3-haiku</span></td><td class="muted">3d ago</td><td class="r">1.4M</td><td class="r">$2.18</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div></body></html>

@@ -1,0 +1,75 @@
+/* Shared styles for design system preview cards.
+   Each card is rendered ~700px wide on a dark surface to match the live app. */
+@import url('../colors_and_type.css');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+  font: var(--p);
+  -webkit-font-smoothing: antialiased;
+}
+
+.card {
+  padding: 24px;
+  min-height: 100%;
+}
+
+.row { display: flex; gap: 12px; align-items: center; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.grid { display: grid; gap: 12px; }
+
+.label { font: var(--h3); color: var(--muted-foreground); }
+.value { font: var(--h1); color: var(--foreground); }
+.mono  { font-family: var(--font-mono); }
+
+.swatch {
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 8px;
+  font: var(--xsmall);
+  font-family: var(--font-mono);
+}
+
+.tile {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--card);
+}
+
+.kpi-tile {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--card);
+}
+.kpi-tile .label { font-size: 12px; }
+.kpi-tile .value { font-size: 18px; font-weight: 600; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font: var(--code);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.dot { display:inline-block; width: 8px; height: 8px; border-radius: 2px; }
+.dotr { display:inline-block; width: 8px; height: 8px; border-radius: 50%; }
+
+.divider { height: 1px; background: var(--border); }
+
+.section-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin-bottom: 8px;
+}

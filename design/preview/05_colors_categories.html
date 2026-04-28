@@ -1,0 +1,22 @@
+<!doctype html>
+<html class="dark"><head><meta charset="utf-8"><title>Chart Categories</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .row2 { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .cat { display: grid; grid-template-columns: 16px 140px 1fr 80px; gap: 12px; align-items: center; padding: 6px 8px; border-radius: 6px; }
+  .cat:hover { background: var(--muted); }
+  .sw { height: 16px; border-radius: 3px; }
+  .name { font-size: 13px; }
+  .hex { font-family: var(--font-mono); font-size: 11px; color: var(--muted-foreground); text-align: right; }
+  .desc { font-size: 11px; color: var(--muted-foreground); }
+</style></head><body><div class="card">
+  <div class="row2">
+    <div class="cat"><div class="sw" style="background:#6b7280;"></div><div class="name">System</div><div class="desc">base layer · system prompt</div><div class="hex">#6b7280</div></div>
+    <div class="cat"><div class="sw" style="background:#f59e0b;"></div><div class="name">Compacted Summary</div><div class="desc">post-unconformity sediment</div><div class="hex">#f59e0b</div></div>
+    <div class="cat"><div class="sw" style="background:#3b82f6;"></div><div class="name">User Messages</div><div class="desc">prompts</div><div class="hex">#3b82f6</div></div>
+    <div class="cat"><div class="sw" style="background:#22c55e;"></div><div class="name">Assistant Text</div><div class="desc">model output</div><div class="hex">#22c55e</div></div>
+    <div class="cat"><div class="sw" style="background:#9ca3af;"></div><div class="name">Assistant Thinking</div><div class="desc">extended reasoning</div><div class="hex">#9ca3af</div></div>
+    <div class="cat"><div class="sw" style="background:#f97316;"></div><div class="name">Tool Results</div><div class="desc">interspersed sediment</div><div class="hex">#f97316</div></div>
+    <div class="cat"><div class="sw" style="background:#a855f7;"></div><div class="name">Subagent Overhead</div><div class="desc">nested transcripts</div><div class="hex">#a855f7</div></div>
+  </div>
+</div></body></html>
